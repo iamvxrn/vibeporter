@@ -1,0 +1,64 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release Binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Build Cross-Platform Artifacts
+        run: |
+          mkdir -p dist
+
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -o dist/vibeporter main.go
+          tar -czf "dist/vibeporter_linux_amd64.tar.gz" -C dist vibeporter
+          rm -f dist/vibeporter
+
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -o dist/vibeporter main.go
+          tar -czf "dist/vibeporter_linux_arm64.tar.gz" -C dist vibeporter
+          rm -f dist/vibeporter
+
+          # Darwin arm64
+          GOOS=darwin GOARCH=arm64 go build -o dist/vibeporter main.go
+          tar -czf "dist/vibeporter_darwin_arm64.tar.gz" -C dist vibeporter
+          rm -f dist/vibeporter
+
+          # Darwin amd64
+          GOOS=darwin GOARCH=amd64 go build -o dist/vibeporter main.go
+          tar -czf "dist/vibeporter_darwin_amd64.tar.gz" -C dist vibeporter
+          rm -f dist/vibeporter
+
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -o dist/vibeporter.exe main.go
+          zip -j "dist/vibeporter_windows_amd64.zip" dist/vibeporter.exe
+          rm -f dist/vibeporter.exe
+
+          # Checksums
+          cd dist && sha256sum *.tar.gz *.zip > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
