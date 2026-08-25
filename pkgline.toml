@@ -1,0 +1,9 @@
+[package]
+name = "vibeporter"
+version = "0.1.0"
+language = "go"
+executable = "vibeporter"
+
+[scripts]
+install = "install.sh"
+uninstall = "uninstall.sh"
