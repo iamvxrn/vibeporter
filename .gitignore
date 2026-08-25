@@ -1,0 +1,27 @@
+# Binaries
+/vibeporter
+/chatporter
+/test_bin
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Website (VitePress)
+node_modules/
+website/node_modules/
+website/docs/.vitepress/dist/
+website/docs/.vitepress/cache/
+
+# Tool cache
+.pkgline/
+
+# Agent / accidental dumps
+.backup_state/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
