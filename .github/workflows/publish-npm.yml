@@ -1,0 +1,44 @@
+name: Publish npm wrapper
+
+# Re-run after rotating NPM_TOKEN. Needs an Automation token (2FA OTP
+# cannot be entered in CI). npmjs.com → Access Tokens → Automation.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag whose npm/package.json to publish
+        required: true
+        default: v0.2.0
+
+jobs:
+  publish-npm:
+    name: Publish npm wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish
+        working-directory: npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN not set"
+            exit 1
+          fi
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          if ! npm publish --access public; then
+            echo "::error::EOTP means the secret is not an Automation token. Create one at npmjs.com → Access Tokens (type Automation), then: gh secret set NPM_TOKEN"
+            exit 1
+          fi
