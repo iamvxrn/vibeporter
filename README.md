@@ -19,9 +19,17 @@ A CLI utility for migrating chat histories and configuration files between diffe
 ```bash
 curl -fsSL https://vibeporter.pages.dev/install.sh | sh
 ```
+
 Windows:
+
 ```powershell
 Invoke-Expression (Invoke-WebRequest -Uri "https://vibeporter.pages.dev/install.ps1" -UseBasicParsing).Content
+```
+
+Alternative (downloads the same GitHub Release binary on first run):
+
+```bash
+npx vibeporter@latest list claudecode
 ```
 
 ### Usage

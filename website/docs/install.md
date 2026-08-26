@@ -8,6 +8,16 @@ curl -fsSL https://vibeporter.pages.dev/install.sh | sh
 
 This downloads the binary for your OS and puts it in `~/.local/bin/vibeporter`.
 
+## npm / npx (alternative)
+
+Need Node on PATH already? Same Go binary, fetched from GitHub Releases on first run:
+
+```bash
+npx vibeporter@latest list claudecode
+```
+
+The published package name is unscoped `vibeporter`. Prefer `curl | sh` for a daily-driver install.
+
 ### Check your PATH
 
 Make sure your shell can find the `vibeporter` command:

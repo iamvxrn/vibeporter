@@ -22,3 +22,5 @@ Vibeporter will:
 | Claude Code | `CLAUDE.md`, `.claudeignore` | `GEMINI.md`, `.geminiignore` |
 | Cursor | `.cursorrules`, `.cursorignore` | `GEMINI.md`, `.geminiignore` |
 | OpenCode | `OPENCODE.md`, `.opencodeignore` | `GEMINI.md`, `.geminiignore` |
+
+Cursor is included here as a filename mapping. There is no Cursor chat adapter (`list` / `migrate` still only support `claudecode`, `opencode`, and `gemini`).

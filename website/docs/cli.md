@@ -34,6 +34,8 @@ Translate project configuration files between agent conventions.
 vibeporter port-config --from <agent> --to <agent> --dir <path>
 ```
 
+`cursor` is config-file mapping only. It is not a `list` / `migrate` agent.
+
 **Supported mappings:**
 
 | From | To | Files |

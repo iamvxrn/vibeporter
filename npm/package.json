@@ -1,0 +1,29 @@
+{
+  "name": "vibeporter",
+  "version": "0.1.0",
+  "description": "Thin npm wrapper for the Vibeporter CLI (downloads the GitHub Release binary).",
+  "license": "MIT",
+  "bin": {
+    "vibeporter": "bin.js"
+  },
+  "files": [
+    "bin.js",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamvxrn/vibeporter.git",
+    "directory": "npm"
+  },
+  "homepage": "https://vibeporter.pages.dev",
+  "bugs": {
+    "url": "https://github.com/iamvxrn/vibeporter/issues"
+  },
+  "keywords": [
+    "cli",
+    "vibeporter"
+  ]
+}
