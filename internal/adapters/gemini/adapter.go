@@ -234,17 +234,59 @@ func (a *Adapter) ListConversations() ([]adapters.ChatInfo, error) {
 			return nil
 		}
 		id := strings.TrimSuffix(strings.TrimSuffix(name, ".jsonl"), ".json")
-		chats = append(chats, adapters.ChatInfo{
-			ID:    id,
-			Path:  path,
-			Agent: "gemini",
-		})
+		chats = append(chats, summarizeGeminiFile(path, info.ModTime(), id))
 		return nil
 	})
 	if walkErr != nil && !os.IsNotExist(walkErr) {
 		return nil, walkErr
 	}
 	return chats, nil
+}
+
+func summarizeGeminiFile(path string, modTime time.Time, fallbackID string) adapters.ChatInfo {
+	info := adapters.ChatInfo{
+		ID:        fallbackID,
+		Path:      path,
+		Agent:     "gemini",
+		UpdatedAt: modTime,
+	}
+
+	var firstUser string
+	_ = adapters.ForEachJSONLLimited(path, 256*1024, 64*1024, func(rec map[string]interface{}) {
+		if sid, ok := rec["sessionId"].(string); ok && sid != "" {
+			info.ID = sid
+		}
+		for _, key := range []string{"lastUpdated", "startTime", "timestamp"} {
+			ts, _ := rec[key].(string)
+			if ts == "" {
+				continue
+			}
+			if parsed, err := time.Parse(time.RFC3339, ts); err == nil {
+				info.UpdatedAt = parsed
+				break
+			}
+			if parsed, err := time.Parse(time.RFC3339Nano, ts); err == nil {
+				info.UpdatedAt = parsed
+				break
+			}
+		}
+		if set, ok := rec["$set"].(map[string]interface{}); ok {
+			if ts, _ := set["lastUpdated"].(string); ts != "" {
+				if parsed, err := time.Parse(time.RFC3339, ts); err == nil {
+					info.UpdatedAt = parsed
+				}
+			}
+		}
+		if rec["type"] == "user" && firstUser == "" {
+			firstUser = extractText(rec["content"])
+		}
+	})
+
+	info.Title = adapters.Clip(firstUser, 80)
+	if info.Title == "" {
+		info.Title = "Untitled"
+	}
+	return info
 }
 
 func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, error) {

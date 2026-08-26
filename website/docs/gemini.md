@@ -30,7 +30,7 @@ vibeporter list gemini
 vibeporter migrate --from claudecode --to gemini --source <path> --target <path>
 ```
 
-`vibeporter list gemini` scans `~/.gemini/tmp/*/chats/` for session files across all of your projects.
+`vibeporter list gemini` scans `~/.gemini/tmp/*/chats/` and shows the first user message as the title.
 
 ## Supported Operations
 

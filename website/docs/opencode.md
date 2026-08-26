@@ -1,6 +1,6 @@
 # OpenCode Adapter
 
-The OpenCode adapter reads chat data from a local SQLite database at `~/.local/share/opencode/opencode.db`.
+The OpenCode adapter reads chat data from a local SQLite database at `~/.local/share/opencode/opencode.db`. `list` uses `session.title`, `directory`, and `time_updated`.
 
 ## Storage Format
 

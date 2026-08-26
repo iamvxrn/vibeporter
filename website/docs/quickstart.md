@@ -12,17 +12,17 @@ vibeporter list opencode
 vibeporter list gemini
 ```
 
-Each row shows a chat ID and where it lives on disk.
+Each row is a title, project directory, last update, and id (newest first). Use `--json` if you need the file path.
 
 ## 2. Migrate a conversation
 
-Pick a source chat and choose where it should go:
+Pick a source chat by its id (from `list`) and choose where it should go:
 
 ```bash
 vibeporter migrate \
   --from claudecode \
   --to gemini \
-  --source ~/.claude/projects/.../session-id.jsonl \
+  --source 203f4afc-2fd1-40e9-be7b-fc26d8fc0759 \
   --target /tmp/migrated.jsonl
 ```
 

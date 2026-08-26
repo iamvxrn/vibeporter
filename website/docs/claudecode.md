@@ -1,6 +1,6 @@
 # Claude Code Adapter
 
-The Claude Code adapter reads JSONL conversation logs from the `~/.claude/projects/` directory.
+The Claude Code adapter reads JSONL conversation logs from the `~/.claude/projects/` directory. `list` uses the session's `ai-title` when present, otherwise the first user message, plus the `cwd` as the project.
 
 ## Storage Format
 

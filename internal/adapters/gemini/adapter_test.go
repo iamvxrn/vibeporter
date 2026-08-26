@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"vibeporter/internal/models"
 )
@@ -116,5 +117,28 @@ func TestInjectRoundTrips(t *testing.T) {
 	}
 	if got.Messages[1].Role != models.RoleAssistant || got.Messages[1].Content != "a" {
 		t.Errorf("round-trip assistant message incorrect: %+v", got.Messages[1])
+	}
+}
+
+func TestSummarizeGeminiFileUsesFirstUser(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "session-2026-01-01T00-00-abcd.jsonl")
+	mockData := strings.Join([]string{
+		`{"sessionId":"sess-1","projectHash":"hash","startTime":"2026-01-01T00:00:00Z"}`,
+		`{"id":"m1","timestamp":"2026-01-01T00:00:01Z","type":"user","content":[{"text":"hello from gemini"}]}`,
+		`{"id":"m2","timestamp":"2026-01-01T00:00:02Z","type":"gemini","content":"hi"}`,
+	}, "\n")
+	if err := os.WriteFile(path, []byte(mockData), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := summarizeGeminiFile(path, time.Time{}, "fallback")
+	if got.ID != "sess-1" {
+		t.Fatalf("id: %q", got.ID)
+	}
+	if got.Title != "hello from gemini" {
+		t.Fatalf("title: %q", got.Title)
+	}
+	if got.UpdatedAt.IsZero() {
+		t.Fatal("expected timestamp")
 	}
 }

@@ -31,7 +31,13 @@ var migrateCmd = &cobra.Command{
 
 		fmt.Printf("Migrating chat from %s (%s) to %s (%s)...\n", sourcePath, fromAgent, targetPath, toAgent)
 
-		conv, err := extractor.Extract(sourcePath)
+		resolved, err := resolveSource(extractor, sourcePath)
+		if err != nil {
+			fmt.Printf("Error resolving source: %v\n", err)
+			return
+		}
+
+		conv, err := extractor.Extract(resolved)
 		if err != nil {
 			fmt.Printf("Error extracting: %v\n", err)
 			return
@@ -50,9 +56,9 @@ var migrateCmd = &cobra.Command{
 func init() {
 	migrateCmd.Flags().StringVar(&fromAgent, "from", "", "Source agent (e.g. claudecode)")
 	migrateCmd.Flags().StringVar(&toAgent, "to", "", "Target agent (e.g. gemini)")
-	migrateCmd.Flags().StringVar(&sourcePath, "source", "", "Path of the source chat database/log")
+	migrateCmd.Flags().StringVar(&sourcePath, "source", "", "Chat id from `list`, or a file path")
 	migrateCmd.Flags().StringVar(&targetPath, "target", "", "Path to write the target chat log")
-	
+
 	migrateCmd.MarkFlagRequired("from")
 	migrateCmd.MarkFlagRequired("to")
 	migrateCmd.MarkFlagRequired("source")

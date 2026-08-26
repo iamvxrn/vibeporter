@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"vibeporter/internal/adapters"
 	"vibeporter/internal/models"
 )
 
@@ -95,31 +94,4 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 	}
 
 	return conv, scanner.Err()
-}
-
-func (a *Adapter) ListConversations() ([]adapters.ChatInfo, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
-
-	projectsDir := filepath.Join(home, ".claude", "projects")
-	var chats []adapters.ChatInfo
-
-	err = filepath.Walk(projectsDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // skip errors
-		}
-		if !info.IsDir() && strings.HasSuffix(path, ".jsonl") && !strings.Contains(path, "subagents") {
-			id := strings.TrimSuffix(info.Name(), ".jsonl")
-			chats = append(chats, adapters.ChatInfo{
-				ID:    id,
-				Path:  path,
-				Agent: "claudecode",
-			})
-		}
-		return nil
-	})
-
-	return chats, err
 }
