@@ -130,54 +130,167 @@ func (a *Adapter) Extract(sessionID string) (*models.Conversation, error) {
 		ID:          sessionID,
 		AgentSource: "opencode",
 		Messages:    []models.Message{},
+		Metadata:    map[string]interface{}{},
 	}
 
-	query := `
-		SELECT m.data, p.data 
-		FROM message m 
-		JOIN part p ON m.id = p.message_id 
-		WHERE m.session_id = ? 
-		ORDER BY m.time_created ASC, p.time_created ASC
-	`
-	rows, err := db.Query(query, sessionID)
+	var title, directory string
+	_ = db.QueryRow(`SELECT title, directory FROM session WHERE id = ?`, sessionID).Scan(&title, &directory)
+	conv.Title = strings.TrimSpace(title)
+	if directory != "" {
+		conv.Metadata["cwd"] = directory
+	}
+
+	msgRows, err := db.Query(`SELECT id, data, time_created FROM message WHERE session_id = ? ORDER BY time_created ASC`, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer msgRows.Close()
 
-	for rows.Next() {
-		var msgDataStr, partDataStr string
-		if err := rows.Scan(&msgDataStr, &partDataStr); err != nil {
+	type msgRow struct {
+		id      string
+		data    string
+		created int64
+	}
+	var msgs []msgRow
+	for msgRows.Next() {
+		var m msgRow
+		if err := msgRows.Scan(&m.id, &m.data, &m.created); err != nil {
 			continue
 		}
+		msgs = append(msgs, m)
+	}
 
+	for _, m := range msgs {
 		var msgData map[string]interface{}
-		var partData map[string]interface{}
-
-		json.Unmarshal([]byte(msgDataStr), &msgData)
-		json.Unmarshal([]byte(partDataStr), &partData)
-
+		_ = json.Unmarshal([]byte(m.data), &msgData)
 		roleStr, _ := msgData["role"].(string)
-
-		role := models.RoleSystem
+		role := models.RoleAssistant
 		if roleStr == "user" {
 			role = models.RoleUser
-		} else if roleStr == "assistant" {
-			role = models.RoleAssistant
 		}
 
-		content := ""
-		if txt, ok := partData["text"].(string); ok {
-			content = txt
+		partRows, err := db.Query(`SELECT data FROM part WHERE message_id = ? ORDER BY time_created ASC`, m.id)
+		if err != nil {
+			continue
 		}
-
-		if content != "" {
-			conv.Messages = append(conv.Messages, models.Message{
-				Role:    role,
-				Content: content,
-			})
+		var b strings.Builder
+		for partRows.Next() {
+			var partDataStr string
+			if err := partRows.Scan(&partDataStr); err != nil {
+				continue
+			}
+			b.WriteString(partText(partDataStr))
 		}
+		partRows.Close()
+		text := strings.TrimSpace(b.String())
+		if text == "" {
+			continue
+		}
+		msg := models.Message{Role: role, Content: text, Timestamp: adapters.UnixMillisPtr(m.created)}
+		conv.Messages = append(conv.Messages, msg)
 	}
 
 	return conv, nil
+}
+
+func partText(raw string) string {
+	var part map[string]interface{}
+	if json.Unmarshal([]byte(raw), &part) != nil {
+		return ""
+	}
+	switch part["type"] {
+	case "text", "reasoning":
+		if txt, ok := part["text"].(string); ok && strings.TrimSpace(txt) != "" {
+			if part["type"] == "reasoning" {
+				return ""
+			}
+			return txt + "\n"
+		}
+	case "tool":
+		name, _ := part["tool"].(string)
+		if name == "" {
+			name = "tool"
+		}
+		return fmt.Sprintf("[Tool Use: %s]\n", name)
+	}
+	return ""
+}
+
+func (a *Adapter) DefaultTarget(*models.Conversation) (string, error) {
+	return "", nil
+}
+
+func (a *Adapter) Inject(conv *models.Conversation, _ string) (string, error) {
+	dbPath := getDBPath()
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		return "", err
+	}
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	now := time.Now().UnixMilli()
+	sessionID := adapters.NewPrefixedID("ses_")
+	cwd := adapters.CwdFromMeta(conv)
+	if cwd == "" {
+		cwd, _ = os.Getwd()
+	}
+	if cwd == "" {
+		cwd, _ = os.UserHomeDir()
+	}
+	title := strings.TrimSpace(conv.Title)
+	if title == "" {
+		title = "Imported session"
+	}
+	slug := adapters.NewPrefixedID("imp-")
+	rel := strings.TrimPrefix(filepath.ToSlash(cwd), "/")
+
+	tx, err := db.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+		INSERT INTO session (
+			id, project_id, slug, directory, path, title, version,
+			cost, tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write,
+			time_created, time_updated
+		) VALUES (?, 'global', ?, ?, ?, ?, '1.0.0', 0, 0, 0, 0, 0, 0, ?, ?)`,
+		sessionID, slug, cwd, rel, title, now, now)
+	if err != nil {
+		return "", fmt.Errorf("insert session: %w", err)
+	}
+
+	for _, msg := range conv.Messages {
+		ms := now
+		if msg.Timestamp != nil {
+			ms = msg.Timestamp.UnixMilli()
+		}
+		msgID := adapters.NewPrefixedID("msg_")
+		role := "assistant"
+		if msg.Role == models.RoleUser {
+			role = "user"
+		}
+		msgData, _ := json.Marshal(map[string]interface{}{
+			"role": role,
+			"time": map[string]int64{"created": ms},
+		})
+		if _, err := tx.Exec(`INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)`,
+			msgID, sessionID, ms, ms, string(msgData)); err != nil {
+			return "", fmt.Errorf("insert message: %w", err)
+		}
+		partID := adapters.NewPrefixedID("prt_")
+		partData, _ := json.Marshal(map[string]interface{}{"type": "text", "text": msg.Content})
+		if _, err := tx.Exec(`INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)`,
+			partID, msgID, sessionID, ms, ms, string(partData)); err != nil {
+			return "", fmt.Errorf("insert part: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	return sessionID, nil
 }

@@ -10,20 +10,21 @@ See what's available for a given agent:
 vibeporter list claudecode
 vibeporter list opencode
 vibeporter list gemini
+vibeporter list kimi
+vibeporter list dsh
 ```
 
 Each row is a title, project directory, last update, and id (newest first). Use `--json` if you need the file path.
 
 ## 2. Migrate a conversation
 
-Pick a source chat by its id (from `list`) and choose where it should go:
+Pick a source chat by its id (from `list`). Omit `--target` to write into the destination agent's own store:
 
 ```bash
 vibeporter migrate \
   --from claudecode \
   --to gemini \
-  --source 203f4afc-2fd1-40e9-be7b-fc26d8fc0759 \
-  --target /tmp/migrated.jsonl
+  --source 203f4afc-2fd1-40e9-be7b-fc26d8fc0759
 ```
 
 Behind the scenes, Vibeporter:

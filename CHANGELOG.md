@@ -1,10 +1,15 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-08-27
 
+Round-trip migrate among the agents we actually support, plus Kimi Code and DeepSeek Harness.
+
+- Inject writes a **new** session for Claude Code, OpenCode, Gemini CLI, Kimi Code, and DSH (never updates an existing one)
+- `migrate --target` is optional; default is the target agent's native store
+- `list` shows title, project, and date; `--json` / `--paths` for file paths; `migrate --source` accepts a list id
+- Extract keeps timestamps; Claude skips meta/slash-command noise; OpenCode includes tool-use markers
+- Adapters: `kimicode`/`kimi` (`~/.kimi-code`), `dsh`/`dhs` (`~/.dsh`)
 - npm wrapper (`npx vibeporter@latest`) downloads the GitHub Release binary on first run
-- Release workflow publishes to npm when `NPM_TOKEN` is set
-- `list` shows title, project, and date (use `--json` / `--paths` for file paths); `migrate --source` accepts a list id
 
 ## [0.1.0] - 2026-08-25
 

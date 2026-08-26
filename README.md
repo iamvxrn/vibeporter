@@ -8,8 +8,7 @@ A CLI utility for migrating chat histories and configuration files between diffe
 ## Features
 
 - Converts chat histories from JSONL or SQLite into a standard format.
-- Supports reading from Claude Code and OpenCode.
-- Supports reading and writing Gemini CLI transcripts.
+- Supports Claude Code, OpenCode, Gemini CLI, Kimi Code, and DeepSeek Harness (read and write).
 - Copies configuration files (e.g., `CLAUDE.md` to `GEMINI.md`).
 
 ## Quick Start
@@ -38,8 +37,7 @@ npx vibeporter@latest list claudecode
 vibeporter list claudecode
 
 vibeporter migrate --from claudecode --to gemini \
-  --source path/to/session.jsonl \
-  --target path/to/migrated.jsonl
+  --source <chat-id-from-list>
 
 vibeporter port-config --from claudecode --to gemini --dir .
 ```

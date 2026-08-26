@@ -26,6 +26,8 @@ var portCmd = &cobra.Command{
 		} else if fromAgent == "opencode" && toAgent == "gemini" {
 			portFile(portDir, ".opencodeignore", ".geminiignore")
 			portFile(portDir, "OPENCODE.md", "GEMINI.md")
+		} else if (fromAgent == "kimicode" || fromAgent == "kimi") && toAgent == "gemini" {
+			portFile(portDir, "AGENTS.md", "GEMINI.md")
 		} else {
 			fmt.Printf("Config porting from %s to %s is not supported yet.\n", fromAgent, toAgent)
 		}

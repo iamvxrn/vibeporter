@@ -30,6 +30,8 @@ export default defineConfig({
           { text: 'Claude Code', link: '/claudecode' },
           { text: 'OpenCode', link: '/opencode' },
           { text: 'Gemini CLI', link: '/gemini' },
+          { text: 'Kimi Code', link: '/kimicode' },
+          { text: 'DeepSeek Harness', link: '/dsh' },
         ]
       },
       {

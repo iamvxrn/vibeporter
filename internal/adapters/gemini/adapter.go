@@ -289,7 +289,27 @@ func summarizeGeminiFile(path string, modTime time.Time, fallbackID string) adap
 	return info
 }
 
+func (a *Adapter) DefaultTarget(conv *models.Conversation) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	seed := adapters.CwdFromMeta(conv)
+	if seed == "" {
+		seed = conv.ID
+	}
+	name := fmt.Sprintf("session-%s-%s.jsonl", time.Now().UTC().Format("2006-01-02T15-04-05"), adapters.NewUUID()[:8])
+	return filepath.Join(home, ".gemini", "tmp", projectHash(seed), "chats", name), nil
+}
+
 func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, error) {
+	var err error
+	if strings.TrimSpace(targetPath) == "" {
+		targetPath, err = a.DefaultTarget(conv)
+		if err != nil {
+			return "", err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		return "", err
 	}
@@ -321,9 +341,13 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 		if msg.Role == models.RoleUser {
 			recType = "user"
 		}
+		ts := now
+		if msg.Timestamp != nil {
+			ts = msg.Timestamp.UTC().Format(time.RFC3339)
+		}
 		rec := map[string]interface{}{
 			"id":        newUUID(),
-			"timestamp": now,
+			"timestamp": ts,
 			"type":      recType,
 			"content":   []map[string]string{{"text": msg.Content}},
 		}

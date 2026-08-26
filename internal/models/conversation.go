@@ -19,6 +19,7 @@ type Message struct {
 
 type Conversation struct {
 	ID          string                 `json:"id"`
+	Title       string                 `json:"title,omitempty"`
 	AgentSource string                 `json:"agent_source"`
 	Messages    []Message              `json:"messages"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`

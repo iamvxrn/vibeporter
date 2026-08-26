@@ -16,7 +16,8 @@ vibeporter is a single Go CLI for migrating chat histories and workspace configu
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Gemini CLI</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Claude Code</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">OpenCode</span>
-  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Cursor</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Kimi Code</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">DeepSeek Harness</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Pure Go</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Zero Dependencies</span>
 </div>
@@ -35,8 +36,7 @@ vibeporter list claudecode
 
 # Migrate a chat from Claude Code to Gemini CLI
 vibeporter migrate --from claudecode --to gemini \
-  --source ~/.claude/projects/.../session.jsonl \
-  --target /tmp/migrated.jsonl
+  --source <chat-id-from-list>
 
 # Port your project configs (CLAUDE.md → GEMINI.md)
 vibeporter port-config --from claudecode --to gemini --dir .

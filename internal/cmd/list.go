@@ -28,7 +28,7 @@ var listCmd = &cobra.Command{
 
 		extractor, ok := extractors[agent]
 		if !ok {
-			return fmt.Errorf("agent %s is not supported for extraction", agent)
+			return fmt.Errorf("agent %s is not supported for extraction (have: %s)", agent, supportedAgents)
 		}
 
 		chats, err := extractor.ListConversations()

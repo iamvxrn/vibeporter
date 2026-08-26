@@ -10,7 +10,7 @@ vibeporter list <agent> --json
 vibeporter list <agent> --paths
 ```
 
-**Agents:** `claudecode`, `opencode`, `gemini`
+**Agents:** `claudecode`, `opencode`, `gemini`, `kimicode` (`kimi`), `dsh` (`dhs`)
 
 Prints a table of **title**, **project**, **updated**, and **id** (newest first). Titles come from the agent's own name when it has one (Claude `ai-title`, OpenCode `session.title`), otherwise from the first user message.
 
@@ -21,14 +21,15 @@ Prints a table of **title**, **project**, **updated**, and **id** (newest first)
 Extract a chat from the source agent and inject it into the target agent's format.
 
 ```bash
-vibeporter migrate --from <agent> --to <agent> --source <path> --target <path>
+vibeporter migrate --from <agent> --to <agent> --source <id>
+vibeporter migrate --from <agent> --to <agent> --source <id> --target /tmp/out.jsonl
 ```
 
 **Flags:**
 - `--from` — Source agent name
 - `--to` — Target agent name
 - `--source` — Chat id from `list`, or a file path
-- `--target` — Path to write the converted output
+- `--target` — Optional. When omitted, writes into the target agent's native store.
 
 ## `port-config`
 
@@ -47,3 +48,4 @@ vibeporter port-config --from <agent> --to <agent> --dir <path>
 | `claudecode` | `gemini` | `CLAUDE.md` → `GEMINI.md`, `.claudeignore` → `.geminiignore` |
 | `cursor` | `gemini` | `.cursorrules` → `GEMINI.md`, `.cursorignore` → `.geminiignore` |
 | `opencode` | `gemini` | `OPENCODE.md` → `GEMINI.md`, `.opencodeignore` → `.geminiignore` |
+| `kimicode` | `gemini` | `AGENTS.md` → `GEMINI.md` |

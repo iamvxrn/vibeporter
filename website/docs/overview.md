@@ -18,8 +18,9 @@ graph LR
     A[Claude Code] -->|Extractor| IR((Common Format))
     B[OpenCode] -->|Extractor| IR
     C[Gemini CLI] -->|Extractor| IR
-    IR -->|Injector| D[Gemini CLI]
-    IR -->|Injector| E[Other agents]
+    K[Kimi Code] -->|Extractor| IR
+    DSH[DeepSeek Harness] -->|Extractor| IR
+    IR -->|Injector| D[Claude / OpenCode / Gemini / Kimi / DSH]
 ```
 
-Today Claude Code and OpenCode can be read, and Gemini CLI can be both read and written. As more injectors land, every existing extractor gets those targets for free.
+Extract and inject both exist for Claude Code, OpenCode, Gemini CLI, Kimi Code, and DeepSeek Harness. Inject always creates a **new** session and never overwrites one that already exists. `migrate` writes into the target's native store when `--target` is omitted.
