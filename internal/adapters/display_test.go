@@ -18,8 +18,9 @@ func TestShortPathHome(t *testing.T) {
 	if got := ShortPath(nested); got != "~/extra/git/pkgline" {
 		t.Fatalf("nested: got %q", got)
 	}
-	if got := ShortPath("/tmp/somewhere"); got != "/tmp/somewhere" {
-		t.Fatalf("abs: got %q", got)
+	outside := filepath.ToSlash(filepath.Clean("/tmp/somewhere"))
+	if got := ShortPath("/tmp/somewhere"); got != outside {
+		t.Fatalf("abs: got %q want %q", got, outside)
 	}
 }
 

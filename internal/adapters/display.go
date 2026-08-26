@@ -25,7 +25,7 @@ func ShortPath(p string) string {
 	if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		return "~/" + filepath.ToSlash(rel)
 	}
-	return p
+	return filepath.ToSlash(p)
 }
 
 // Clip collapses whitespace and truncates s to at most n runes.
