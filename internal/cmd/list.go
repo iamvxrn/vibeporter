@@ -65,9 +65,9 @@ func printListHuman(agent string, chats []adapters.ChatInfo, showPath bool) {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 	if showPath {
-		fmt.Fprintln(w, "TITLE\tPROJECT\tUPDATED\tID\tPATH")
+		_, _ = fmt.Fprintln(w, "TITLE\tPROJECT\tUPDATED\tID\tPATH")
 	} else {
-		fmt.Fprintln(w, "TITLE\tPROJECT\tUPDATED\tID")
+		_, _ = fmt.Fprintln(w, "TITLE\tPROJECT\tUPDATED\tID")
 	}
 	for _, c := range chats {
 		title := c.Title
@@ -80,9 +80,9 @@ func printListHuman(agent string, chats []adapters.ChatInfo, showPath bool) {
 			updated = c.UpdatedAt.Local().Format("2006-01-02 15:04")
 		}
 		if showPath {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", title, c.Project, updated, c.ID, c.Path)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", title, c.Project, updated, c.ID, c.Path)
 		} else {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", title, c.Project, updated, c.ID)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", title, c.Project, updated, c.ID)
 		}
 	}
 	_ = w.Flush()

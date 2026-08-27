@@ -116,7 +116,7 @@ func extractWire(path string) (*models.Conversation, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	id := filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(path))))
 	conv := &models.Conversation{
@@ -293,7 +293,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w := bufio.NewWriter(f)
 	_ = writeJSONLine(w, map[string]interface{}{
 		"type":             "metadata",

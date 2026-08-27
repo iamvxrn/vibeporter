@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+CI, lint, and tests: gofmt, golangci-lint, govulncheck, and unit coverage for models, adapters helpers, OpenCode, and CLI commands.
+
 ## [0.2.0] - 2026-08-27
 
 Round-trip migrate among the agents we actually support, plus Kimi Code and DeepSeek Harness.

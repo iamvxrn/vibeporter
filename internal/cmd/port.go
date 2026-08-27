@@ -16,7 +16,7 @@ var portCmd = &cobra.Command{
 	Short: "Port project configuration files (like CLAUDE.md) between agents",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Porting configs in %s from %s to %s...\n", portDir, fromAgent, toAgent)
-		
+
 		if fromAgent == "claudecode" && toAgent == "gemini" {
 			portFile(portDir, ".claudeignore", ".geminiignore")
 			portFile(portDir, "CLAUDE.md", "GEMINI.md")
@@ -37,16 +37,16 @@ var portCmd = &cobra.Command{
 func portFile(dir, source, target string) {
 	srcPath := filepath.Join(dir, source)
 	tgtPath := filepath.Join(dir, target)
-	
+
 	if _, err := os.Stat(srcPath); os.IsNotExist(err) {
 		return // Source file doesn't exist, nothing to do
 	}
-	
+
 	if _, err := os.Stat(tgtPath); err == nil {
 		fmt.Printf("Warning: Target %s already exists, skipping %s.\n", tgtPath, source)
 		return
 	}
-	
+
 	err := copyFile(srcPath, tgtPath)
 	if err != nil {
 		fmt.Printf("Error porting %s to %s: %v\n", source, target, err)
@@ -60,13 +60,13 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
 	if err != nil {
@@ -79,9 +79,9 @@ func init() {
 	portCmd.Flags().StringVar(&fromAgent, "from", "", "Source agent (e.g. claudecode, cursor)")
 	portCmd.Flags().StringVar(&toAgent, "to", "", "Target agent (e.g. gemini)")
 	portCmd.Flags().StringVar(&portDir, "dir", ".", "Directory to run in")
-	
-	portCmd.MarkFlagRequired("from")
-	portCmd.MarkFlagRequired("to")
+
+	_ = portCmd.MarkFlagRequired("from")
+	_ = portCmd.MarkFlagRequired("to")
 
 	rootCmd.AddCommand(portCmd)
 }

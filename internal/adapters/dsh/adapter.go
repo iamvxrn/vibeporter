@@ -211,7 +211,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w := bufio.NewWriter(f)
 	now := time.Now().UnixMilli()
 	sid := filepath.Base(filepath.Dir(targetPath))

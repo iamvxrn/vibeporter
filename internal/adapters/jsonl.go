@@ -16,7 +16,7 @@ func ForEachJSONLLimited(path string, headBytes, tailBytes int64, fn func(map[st
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	st, err := f.Stat()
 	if err != nil {

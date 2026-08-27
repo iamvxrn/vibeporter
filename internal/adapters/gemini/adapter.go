@@ -50,7 +50,7 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	conv := &models.Conversation{
 		AgentSource: "gemini",
@@ -203,7 +203,7 @@ func extractToolCalls(v interface{}) string {
 			continue
 		}
 		if name, ok := m["name"].(string); ok {
-			b.WriteString(fmt.Sprintf("[Tool Use: %s]\n", name))
+			_, _ = fmt.Fprintf(&b, "[Tool Use: %s]\n", name)
 		}
 	}
 	return b.String()
@@ -318,7 +318,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	w := bufio.NewWriter(file)
 	now := time.Now().UTC().Format(time.RFC3339)

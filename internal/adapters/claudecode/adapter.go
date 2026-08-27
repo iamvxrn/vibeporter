@@ -24,7 +24,7 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	id := strings.TrimSuffix(filepath.Base(sourcePath), ".jsonl")
 	conv := &models.Conversation{
@@ -118,7 +118,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w := bufio.NewWriter(f)
 	sessionID := strings.TrimSuffix(filepath.Base(targetPath), ".jsonl")
 	cwd := adapters.CwdFromMeta(conv)

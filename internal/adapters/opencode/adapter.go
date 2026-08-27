@@ -39,7 +39,7 @@ func listSessions(dbPath string) ([]adapters.ChatInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	chats, err := querySessions(db, `SELECT id, title, directory, time_updated, time_created FROM session ORDER BY COALESCE(time_updated, time_created) DESC`)
 	if err != nil {
@@ -53,7 +53,7 @@ func querySessions(db *sql.DB, q string) ([]adapters.ChatInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var chats []adapters.ChatInfo
 	for rows.Next() {
@@ -87,7 +87,7 @@ func querySessionsLegacy(db *sql.DB) ([]adapters.ChatInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var chats []adapters.ChatInfo
 	for rows.Next() {
@@ -119,12 +119,15 @@ func unixMillis(ms int64) time.Time {
 }
 
 func (a *Adapter) Extract(sessionID string) (*models.Conversation, error) {
-	dbPath := getDBPath()
+	return extractSession(getDBPath(), sessionID)
+}
+
+func extractSession(dbPath, sessionID string) (*models.Conversation, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	conv := &models.Conversation{
 		ID:          sessionID,
@@ -144,7 +147,7 @@ func (a *Adapter) Extract(sessionID string) (*models.Conversation, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer msgRows.Close()
+	defer func() { _ = msgRows.Close() }()
 
 	type msgRow struct {
 		id      string
@@ -181,7 +184,7 @@ func (a *Adapter) Extract(sessionID string) (*models.Conversation, error) {
 			}
 			b.WriteString(partText(partDataStr))
 		}
-		partRows.Close()
+		_ = partRows.Close()
 		text := strings.TrimSpace(b.String())
 		if text == "" {
 			continue
@@ -221,7 +224,10 @@ func (a *Adapter) DefaultTarget(*models.Conversation) (string, error) {
 }
 
 func (a *Adapter) Inject(conv *models.Conversation, _ string) (string, error) {
-	dbPath := getDBPath()
+	return injectSession(getDBPath(), conv)
+}
+
+func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return "", err
 	}
@@ -229,7 +235,7 @@ func (a *Adapter) Inject(conv *models.Conversation, _ string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	now := time.Now().UnixMilli()
 	sessionID := adapters.NewPrefixedID("ses_")
@@ -251,7 +257,7 @@ func (a *Adapter) Inject(conv *models.Conversation, _ string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.Exec(`
 		INSERT INTO session (

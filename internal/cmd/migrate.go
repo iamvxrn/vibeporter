@@ -67,9 +67,9 @@ func init() {
 	migrateCmd.Flags().StringVar(&sourcePath, "source", "", "Chat id from list, or a file path")
 	migrateCmd.Flags().StringVar(&targetPath, "target", "", "Optional output path (defaults to the target agent's native store)")
 
-	migrateCmd.MarkFlagRequired("from")
-	migrateCmd.MarkFlagRequired("to")
-	migrateCmd.MarkFlagRequired("source")
+	_ = migrateCmd.MarkFlagRequired("from")
+	_ = migrateCmd.MarkFlagRequired("to")
+	_ = migrateCmd.MarkFlagRequired("source")
 
 	rootCmd.AddCommand(migrateCmd)
 }
