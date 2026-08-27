@@ -64,7 +64,8 @@ jobs:
           go-version: "1.25"
 
       - name: Run Tests with coverage
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        shell: bash
+        run: go test -coverprofile="coverage.out" -covermode=atomic ./...
 
       - name: Coverage summary
         if: runner.os != 'Windows'
