@@ -1,7 +1,10 @@
 name: Publish npm wrapper
 
-# Re-run after rotating NPM_TOKEN. Needs an Automation token (2FA OTP
-# cannot be entered in CI). npmjs.com → Access Tokens → Automation.
+# Publishes via npm Trusted Publishing (OIDC). No NPM_TOKEN.
+# On npmjs.com → vibeporter → Settings → Trusted Publisher → GitHub Actions:
+#   owner: iamvxrn
+#   repository: vibeporter
+#   workflow filename: publish-npm.yml
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +12,10 @@ on:
         description: Git tag whose npm/package.json to publish
         required: true
         default: v0.2.0
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   publish-npm:
@@ -23,22 +30,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "24"
 
       - name: Publish
         working-directory: npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN not set"
-            exit 1
-          fi
           VERSION="${{ inputs.tag }}"
           VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
-          if ! npm publish --access public; then
-            echo "::error::EOTP means the secret is not an Automation token. Create one at npmjs.com → Access Tokens (type Automation), then: gh secret set NPM_TOKEN"
-            exit 1
-          fi
+          npm publish --access public

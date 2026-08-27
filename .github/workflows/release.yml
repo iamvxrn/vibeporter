@@ -67,6 +67,9 @@ jobs:
     name: Publish npm wrapper
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -74,21 +77,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "24"
 
       - name: Publish
         working-directory: npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN not set; skipping npm publish"
-            exit 0
-          fi
           VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
-          if ! npm publish --access public; then
-            echo "::error::EOTP means NPM_TOKEN is not an Automation token (2FA cannot run in CI). npmjs.com → Access Tokens → Generate New Token → Automation, then gh secret set NPM_TOKEN"
-            exit 1
-          fi
+          npm publish --access public
