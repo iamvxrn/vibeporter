@@ -3,8 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "cp ../install.sh ../install.ps1 docs/public/",
-    "prebuild": "cp ../install.sh ../install.ps1 docs/public/",
+    "predev": "cp ../install.sh ../install.ps1 docs/public/ && cp ../CHANGELOG.md docs/changelog.md",
+    "prebuild": "cp ../install.sh ../install.ps1 docs/public/ && cp ../CHANGELOG.md docs/changelog.md",
+    "predocs:dev": "npm run predev",
+    "predocs:build": "npm run prebuild",
     "dev": "vitepress dev docs",
     "build": "vitepress build docs",
     "docs:dev": "vitepress dev docs",
