@@ -41,3 +41,29 @@ func TestConversationJSONRoundTrip(t *testing.T) {
 		t.Fatalf("metadata: %+v", out.Metadata)
 	}
 }
+
+func TestStringContentAndEffectiveParts(t *testing.T) {
+	plain := Message{Role: RoleUser, Content: "hi"}
+	if plain.StringContent() != "hi" {
+		t.Fatalf("legacy: %q", plain.StringContent())
+	}
+	if parts := plain.EffectiveParts(); len(parts) != 1 || parts[0].Text != "hi" {
+		t.Fatalf("effective from content: %+v", parts)
+	}
+
+	msg := NewMessage(RoleAssistant, []Part{
+		ThinkingPart("secret"),
+		TextPart("ok"),
+		ToolCallPart("c1", "bash", `{"cmd":"ls"}`),
+		ToolResultPart("c1", "a.txt", false),
+	})
+	if msg.Content != "ok\n[Tool Use: bash]\n[Tool Result]\na.txt" {
+		t.Fatalf("content: %q", msg.Content)
+	}
+	if len(msg.Parts) != 4 || msg.Parts[0].Kind != PartThinking {
+		t.Fatalf("parts: %+v", msg.Parts)
+	}
+	if TextPart("x").Kind != PartText || ThinkingPart("t").Kind != PartThinking {
+		t.Fatal("constructors")
+	}
+}
