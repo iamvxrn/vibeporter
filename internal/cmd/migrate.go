@@ -22,11 +22,11 @@ var migrateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		extractor, ok := extractors[fromAgent]
 		if !ok {
-			return fmt.Errorf("source agent %s is not supported (have: %s)", fromAgent, supportedAgents)
+			return fmt.Errorf("source agent %s is not supported (have: %s)", fromAgent, supportedExtractors)
 		}
 		injector, ok := injectors[toAgent]
 		if !ok {
-			return fmt.Errorf("target agent %s is not supported (have: %s)", toAgent, supportedAgents)
+			return fmt.Errorf("target agent %s is not supported (have: %s)", toAgent, supportedInjectors)
 		}
 
 		resolved, err := resolveSource(extractor, sourcePath)

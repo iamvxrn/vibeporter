@@ -3,6 +3,7 @@ package cmd
 import (
 	"vibeporter/internal/adapters"
 	"vibeporter/internal/adapters/claudecode"
+	"vibeporter/internal/adapters/cursor"
 	"vibeporter/internal/adapters/dsh"
 	"vibeporter/internal/adapters/gemini"
 	"vibeporter/internal/adapters/kimicode"
@@ -17,6 +18,7 @@ var extractors = map[string]adapters.Extractor{
 	"kimi":       kimicode.NewAdapter(),
 	"dsh":        dsh.NewAdapter(),
 	"dhs":        dsh.NewAdapter(),
+	"cursor":     cursor.NewAdapter(),
 }
 
 var injectors = map[string]adapters.Injector{
@@ -29,4 +31,5 @@ var injectors = map[string]adapters.Injector{
 	"dhs":        dsh.NewAdapter(),
 }
 
-const supportedAgents = "claudecode, opencode, gemini, kimicode (kimi), dsh (dhs)"
+const supportedExtractors = "claudecode, opencode, gemini, kimicode (kimi), dsh (dhs), cursor"
+const supportedInjectors = "claudecode, opencode, gemini, kimicode (kimi), dsh (dhs)"
