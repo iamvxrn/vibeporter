@@ -4,7 +4,12 @@ export default defineConfig({
   title: "vibeporter",
   description: "Migrate chat histories and configs between AI coding agents.",
   appearance: 'dark',
-  head: [['link', { rel: 'icon', href: '/favicon.svg' }]],
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.svg' }],
+    ['meta', { property: 'og:image', content: 'https://vibeporter.pages.dev/social.png' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: 'https://vibeporter.pages.dev/social.png' }],
+  ],
   themeConfig: {
     logo: '/logo.svg',
     nav: [

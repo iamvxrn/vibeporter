@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="vibeporter">
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="42%" r="52%">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#121118" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="640" fill="#121118"/>
+  <rect width="1280" height="640" fill="url(#glow)"/>
+  <rect width="1280" height="6" fill="#8b5cf6"/>
+  <g transform="translate(168, 188) scale(2.55)" fill="none">
+    <rect x="12" y="37" width="26" height="26" rx="6" fill="#8b5cf6"/>
+    <rect x="62" y="37" width="26" height="26" rx="6" fill="#8b5cf6" opacity="0.45"/>
+    <path d="M40 50 L62 50" stroke="#8b5cf6" stroke-width="8" stroke-linecap="round"/>
+    <path d="M55 42 L63 50 L55 58" stroke="#8b5cf6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="468" y="318" font-family="Noto Sans, sans-serif" font-size="80" font-weight="700" fill="#ece9f2">vibeporter</text>
+  <text x="468" y="384" font-family="Noto Sans, sans-serif" font-size="32" font-weight="400" fill="#aea9b8">Migrate chats between agents</text>
+</svg>

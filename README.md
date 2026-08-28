@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="website/docs/public/social.png" alt="vibeporter — Migrate chats between agents" width="720">
+</p>
+
 # Vibeporter
 
 A CLI utility for migrating chat histories and configuration files between different agent interfaces.
