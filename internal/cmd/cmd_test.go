@@ -139,9 +139,13 @@ func TestPortConfigMappings(t *testing.T) {
 		{"cursor", "gemini", ".cursorrules", "GEMINI.md"},
 		{"opencode", "gemini", "OPENCODE.md", "GEMINI.md"},
 		{"kimi", "gemini", "AGENTS.md", "GEMINI.md"},
+		{"gemini", "claudecode", "GEMINI.md", "CLAUDE.md"},
+		{"gemini", "opencode", "GEMINI.md", "OPENCODE.md"},
+		{"claudecode", "cursor", "CLAUDE.md", ".cursorrules"},
+		{"opencode", "kimicode", "OPENCODE.md", "AGENTS.md"},
 	}
 	for _, tc := range cases {
-		t.Run(tc.from, func(t *testing.T) {
+		t.Run(tc.from+"-"+tc.to, func(t *testing.T) {
 			dir := t.TempDir()
 			if err := os.WriteFile(filepath.Join(dir, tc.src), []byte("x"), 0o644); err != nil {
 				t.Fatal(err)
@@ -154,7 +158,7 @@ func TestPortConfigMappings(t *testing.T) {
 			}
 		})
 	}
-	fromAgent, toAgent, portDir = "gemini", "claudecode", t.TempDir()
+	fromAgent, toAgent, portDir = "gemini", "unknown", t.TempDir()
 	t.Cleanup(resetMigrateFlags)
 	out := captureStdout(t, func() { portCmd.Run(portCmd, nil) })
 	if !strings.Contains(out, "not supported yet") {

@@ -17,21 +17,36 @@ var portCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Porting configs in %s from %s to %s...\n", portDir, fromAgent, toAgent)
 
-		if fromAgent == "claudecode" && toAgent == "gemini" {
-			portFile(portDir, ".claudeignore", ".geminiignore")
-			portFile(portDir, "CLAUDE.md", "GEMINI.md")
-		} else if fromAgent == "cursor" && toAgent == "gemini" {
-			portFile(portDir, ".cursorignore", ".geminiignore")
-			portFile(portDir, ".cursorrules", "GEMINI.md")
-		} else if fromAgent == "opencode" && toAgent == "gemini" {
-			portFile(portDir, ".opencodeignore", ".geminiignore")
-			portFile(portDir, "OPENCODE.md", "GEMINI.md")
-		} else if (fromAgent == "kimicode" || fromAgent == "kimi") && toAgent == "gemini" {
-			portFile(portDir, "AGENTS.md", "GEMINI.md")
-		} else {
+		srcIgnore, srcRules, srcOK := agentConfigFiles(fromAgent)
+		dstIgnore, dstRules, dstOK := agentConfigFiles(toAgent)
+		if !srcOK || !dstOK {
 			fmt.Printf("Config porting from %s to %s is not supported yet.\n", fromAgent, toAgent)
+			return
+		}
+		if srcIgnore != "" && dstIgnore != "" {
+			portFile(portDir, srcIgnore, dstIgnore)
+		}
+		if srcRules != "" && dstRules != "" {
+			portFile(portDir, srcRules, dstRules)
 		}
 	},
+}
+
+func agentConfigFiles(agent string) (ignore, rules string, ok bool) {
+	switch agent {
+	case "claudecode", "claude":
+		return ".claudeignore", "CLAUDE.md", true
+	case "gemini":
+		return ".geminiignore", "GEMINI.md", true
+	case "cursor":
+		return ".cursorignore", ".cursorrules", true
+	case "opencode":
+		return ".opencodeignore", "OPENCODE.md", true
+	case "kimicode", "kimi":
+		return "", "AGENTS.md", true
+	default:
+		return "", "", false
+	}
 }
 
 func portFile(dir, source, target string) {

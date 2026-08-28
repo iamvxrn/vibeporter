@@ -17,11 +17,14 @@ Vibeporter will:
 
 ## Mapping Table
 
-| Source Agent | Source Files | Target Files |
+| Agent | Instruction file | Ignore file |
 |---|---|---|
-| Claude Code | `CLAUDE.md`, `.claudeignore` | `GEMINI.md`, `.geminiignore` |
-| Cursor | `.cursorrules`, `.cursorignore` | `GEMINI.md`, `.geminiignore` |
-| OpenCode | `OPENCODE.md`, `.opencodeignore` | `GEMINI.md`, `.geminiignore` |
-| Kimi Code | `AGENTS.md` | `GEMINI.md` |
+| Claude Code (`claudecode`) | `CLAUDE.md` | `.claudeignore` |
+| Gemini CLI (`gemini`) | `GEMINI.md` | `.geminiignore` |
+| Cursor (`cursor`) | `.cursorrules` | `.cursorignore` |
+| OpenCode (`opencode`) | `OPENCODE.md` | `.opencodeignore` |
+| Kimi Code (`kimicode` / `kimi`) | `AGENTS.md` | — |
 
-Cursor is included here as a filename mapping. There is no Cursor chat adapter.
+Any of these agents can be `--from` or `--to`. Matching files are copied (instruction file to instruction file, ignore file to ignore file). Agents without an ignore file skip that copy. Existing target files are never overwritten.
+
+`cursor` is included here as a filename mapping. There is no Cursor chat adapter.

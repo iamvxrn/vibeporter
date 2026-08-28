@@ -41,11 +41,4 @@ vibeporter port-config --from <agent> --to <agent> --dir <path>
 
 `cursor` is config-file mapping only. It is not a `list` / `migrate` agent.
 
-**Supported mappings:**
-
-| From | To | Files |
-|---|---|---|
-| `claudecode` | `gemini` | `CLAUDE.md` → `GEMINI.md`, `.claudeignore` → `.geminiignore` |
-| `cursor` | `gemini` | `.cursorrules` → `GEMINI.md`, `.cursorignore` → `.geminiignore` |
-| `opencode` | `gemini` | `OPENCODE.md` → `GEMINI.md`, `.opencodeignore` → `.geminiignore` |
-| `kimicode` | `gemini` | `AGENTS.md` → `GEMINI.md` |
+**Supported mappings:** any pair among `claudecode`, `gemini`, `cursor`, `opencode`, and `kimicode`/`kimi`. Instruction files and ignore files are copied to the target names (see [Config Porting](/config-porting)). Existing target files are never overwritten.
