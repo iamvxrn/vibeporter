@@ -3,6 +3,7 @@ module vibeporter
 go 1.25.0
 
 require (
+	github.com/klauspost/compress v1.19.2
 	github.com/spf13/cobra v1.10.2
 	modernc.org/sqlite v1.57.0
 )

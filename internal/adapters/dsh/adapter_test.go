@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/klauspost/compress/zstd"
 	"vibeporter/internal/models"
 )
 
@@ -33,7 +34,35 @@ func TestExtractSessionLog(t *testing.T) {
 	if conv.Metadata["cwd"] != "/tmp/proj" {
 		t.Fatalf("cwd %#v", conv.Metadata)
 	}
-	if len(conv.Messages) != 2 || conv.Messages[0].Content != "hello dsh" {
+	if conv.Messages[0].Role != models.RoleUser || conv.Messages[0].Content != "hello dsh" {
+		t.Fatalf("%#v", conv.Messages)
+	}
+}
+
+func TestExtractZstdSessionLog(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ses_z", "session.jsonl.zstd")
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := strings.Join([]string{
+		`{"type":"session","version":1,"id":"ses_z","cwd":"/tmp/proj","createdAt":1,"delegationDepth":0}`,
+		`{"type":"user/message","seq":0,"time":2,"data":{"content":"hello zstd","source":{"kind":"user"}},"surfaceOp":"add"}`,
+	}, "\n")
+	enc, err := zstd.NewWriter(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compressed := enc.EncodeAll([]byte(body), nil)
+	_ = enc.Close()
+	if err := os.WriteFile(p, compressed, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	conv, err := extractLog(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(conv.Messages) != 1 || conv.Messages[0].Content != "hello zstd" {
 		t.Fatalf("%#v", conv.Messages)
 	}
 }

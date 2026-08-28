@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+Extract DSH `.zstd` sessions. OpenCode inject creates the SQLite schema when missing and honors `--target`. Adapter docs match extract+inject support.
+
 CI, lint, and tests: gofmt, golangci-lint, govulncheck, and unit coverage for models, adapters helpers, OpenCode, and CLI commands.
 
 ## [0.2.0] - 2026-08-27

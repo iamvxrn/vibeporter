@@ -15,5 +15,5 @@ Vibeporter uses `modernc.org/sqlite` — a pure Go SQLite implementation with ze
 | Operation | Status |
 |---|---|
 | Extraction (Read) | ✅ Supported |
-| Injection (Write) | ❌ Coming Soon |
+| Injection (Write) | ✅ New session only |
 | Config Porting | ✅ `OPENCODE.md`, `.opencodeignore` |

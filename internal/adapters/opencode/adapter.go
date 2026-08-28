@@ -220,11 +220,33 @@ func partText(raw string) string {
 }
 
 func (a *Adapter) DefaultTarget(*models.Conversation) (string, error) {
-	return "", nil
+	return getDBPath(), nil
 }
 
-func (a *Adapter) Inject(conv *models.Conversation, _ string) (string, error) {
-	return injectSession(getDBPath(), conv)
+func (a *Adapter) Inject(conv *models.Conversation, target string) (string, error) {
+	dbPath := strings.TrimSpace(target)
+	if dbPath == "" {
+		dbPath = getDBPath()
+	}
+	return injectSession(dbPath, conv)
+}
+
+func ensureOpenCodeSchema(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS session (
+			id TEXT, project_id TEXT, slug TEXT, directory TEXT, path TEXT, title TEXT, version TEXT,
+			cost REAL, tokens_input INTEGER, tokens_output INTEGER, tokens_reasoning INTEGER,
+			tokens_cache_read INTEGER, tokens_cache_write INTEGER,
+			time_created INTEGER, time_updated INTEGER
+		);
+		CREATE TABLE IF NOT EXISTS message (
+			id TEXT, session_id TEXT, time_created INTEGER, time_updated INTEGER, data TEXT
+		);
+		CREATE TABLE IF NOT EXISTS part (
+			id TEXT, message_id TEXT, session_id TEXT, time_created INTEGER, time_updated INTEGER, data TEXT
+		);
+	`)
+	return err
 }
 
 func injectSession(dbPath string, conv *models.Conversation) (string, error) {
@@ -236,6 +258,9 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 		return "", err
 	}
 	defer func() { _ = db.Close() }()
+	if err := ensureOpenCodeSchema(db); err != nil {
+		return "", err
+	}
 
 	now := time.Now().UnixMilli()
 	sessionID := adapters.NewPrefixedID("ses_")

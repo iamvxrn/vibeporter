@@ -16,5 +16,5 @@ Each line is a JSON object. Messages have a `type` field (`user` or `assistant`)
 | Operation | Status |
 |---|---|
 | Extraction (Read) | ✅ Supported |
-| Injection (Write) | ❌ Coming Soon |
+| Injection (Write) | ✅ New session only |
 | Config Porting | ✅ `CLAUDE.md`, `.claudeignore` |

@@ -19,8 +19,11 @@ func TestNewAdapterAndDefaultTarget(t *testing.T) {
 		t.Fatal("nil adapter")
 	}
 	got, err := a.DefaultTarget(&models.Conversation{})
-	if err != nil || got != "" {
-		t.Fatalf("DefaultTarget: %q %v", got, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == "" || !strings.Contains(got, "opencode.db") {
+		t.Fatalf("DefaultTarget: %q", got)
 	}
 }
 
@@ -305,5 +308,18 @@ func createInjectSchema(t *testing.T, dbPath string) {
 	_ = db.Close()
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInjectCreatesSchemaAndHonorsTarget(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "custom", "opencode.db")
+	a := NewAdapter()
+	id, err := a.Inject(&models.Conversation{Title: "fresh-db"}, dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chats, err := listSessions(dbPath)
+	if err != nil || len(chats) != 1 || chats[0].ID != id {
+		t.Fatalf("list custom db: %+v err=%v", chats, err)
 	}
 }

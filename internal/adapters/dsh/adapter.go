@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"vibeporter/internal/adapters"
 	"vibeporter/internal/models"
 )
@@ -70,7 +72,15 @@ func extractLog(path string) (*models.Conversation, error) {
 		return nil, err
 	}
 	if strings.HasSuffix(path, ".zstd") || strings.HasSuffix(path, ".zst") {
-		return nil, fmt.Errorf("compressed DSH logs (.zstd) are not supported yet; export an uncompressed session.jsonl")
+		dec, err := zstd.NewReader(bytes.NewReader(data))
+		if err != nil {
+			return nil, fmt.Errorf("zstd: %w", err)
+		}
+		data, err = io.ReadAll(dec)
+		dec.Close()
+		if err != nil {
+			return nil, fmt.Errorf("zstd: %w", err)
+		}
 	}
 
 	conv := &models.Conversation{

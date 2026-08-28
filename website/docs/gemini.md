@@ -1,6 +1,6 @@
 # Gemini CLI Adapter
 
-The Gemini CLI adapter reads and writes the session transcripts that [Gemini CLI](https://github.com/google-gemini/gemini-cli) records on disk. It's currently the only adapter that supports both extraction and injection, so it can be used as a migration source *or* target.
+The Gemini CLI adapter reads and writes the session transcripts that [Gemini CLI](https://github.com/google-gemini/gemini-cli) records on disk. Extract and inject are both supported, as they are for Claude Code, OpenCode, Kimi Code, and DSH.
 
 ## Storage Format
 

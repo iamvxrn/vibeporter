@@ -12,7 +12,7 @@ CLI names: `dsh` or `dhs`.
 
 The first line is a `session` header (`id`, `cwd`, `delegationDepth`). Later lines are events; extract keeps `user/message` and `assistant/message`.
 
-Compressed `session.jsonl.zstd` files are listed but not extracted yet — export an uncompressed log, or pass a `.jsonl` path.
+Compressed `session.jsonl.zstd` files are extracted the same way as uncompressed logs.
 
 Inject writes a **new uncompressed** `session.jsonl` (header plus surface messages). It does not modify existing logs.
 
@@ -20,6 +20,6 @@ Inject writes a **new uncompressed** `session.jsonl` (header plus surface messag
 
 | Operation | Status |
 |---|---|
-| Extraction (Read) | ✅ Uncompressed JSONL |
+| Extraction (Read) | ✅ JSONL and `.zstd` |
 | Injection (Write) | ✅ New session only |
 | Config Porting | ❌ Not mapped |
