@@ -59,10 +59,7 @@ func TestRegistryAliases(t *testing.T) {
 			t.Errorf("missing extractor %s", name)
 		}
 	}
-	if _, ok := injectors["cursor"]; ok {
-		t.Fatal("cursor must not be an injector")
-	}
-	for _, name := range []string{"gemini", "claudecode", "opencode", "kimicode", "kimi", "dsh", "dhs"} {
+	for _, name := range []string{"gemini", "claudecode", "opencode", "kimicode", "kimi", "dsh", "dhs", "cursor"} {
 		if _, ok := injectors[name]; !ok {
 			t.Errorf("missing injector %s", name)
 		}

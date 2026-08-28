@@ -29,7 +29,8 @@ var injectors = map[string]adapters.Injector{
 	"kimi":       kimicode.NewAdapter(),
 	"dsh":        dsh.NewAdapter(),
 	"dhs":        dsh.NewAdapter(),
+	"cursor":     cursor.NewAdapter(),
 }
 
 const supportedExtractors = "claudecode, opencode, gemini, kimicode (kimi), dsh (dhs), cursor"
-const supportedInjectors = "claudecode, opencode, gemini, kimicode (kimi), dsh (dhs)"
+const supportedInjectors = "claudecode, opencode, gemini, kimicode (kimi), dsh (dhs), cursor"

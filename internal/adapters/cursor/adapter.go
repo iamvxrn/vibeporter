@@ -1,9 +1,9 @@
-// Package cursor extracts Cursor agent transcripts (read-only).
+// Package cursor extracts and injects Cursor agent transcripts.
 //
 // Cursor stores agent chats as JSONL under
 // ~/.cursor/projects/<project>/agent-transcripts/<id>/<id>.jsonl
-// Override the projects root with CURSOR_PROJECTS_DIR. Inject is not
-// implemented: Cursor's session schema is not a stable import target.
+// Override the projects root with CURSOR_PROJECTS_DIR. Inject writes a new
+// session and never updates an existing one. Subagent transcripts are skipped.
 package cursor
 
 import (
@@ -117,10 +117,15 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 			role = models.RoleUser
 		case "assistant":
 			role = models.RoleAssistant
+		case "system":
+			role = models.RoleSystem
 		default:
 			continue
 		}
 		parts := cursorParts(rec)
+		if role == models.RoleUser {
+			parts = stripUserTextParts(parts)
+		}
 		if len(parts) == 0 {
 			continue
 		}
@@ -205,6 +210,20 @@ func firstTextFromCursorMessage(rec map[string]interface{}) string {
 	return ""
 }
 
+func stripUserTextParts(parts []models.Part) []models.Part {
+	var out []models.Part
+	for _, p := range parts {
+		if p.Kind == models.PartText {
+			p.Text = stripUserQueryWrapper(p.Text)
+			if strings.TrimSpace(p.Text) == "" {
+				continue
+			}
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
 func stripUserQueryWrapper(s string) string {
 	s = strings.TrimSpace(s)
 	if i := strings.Index(s, "<user_query>"); i >= 0 {
@@ -215,4 +234,123 @@ func stripUserQueryWrapper(s string) string {
 		return strings.TrimSpace(s)
 	}
 	return s
+}
+
+func wrapUserQuery(text string) string {
+	if strings.Contains(text, "<user_query>") {
+		return text
+	}
+	return "<user_query>\n" + strings.TrimSpace(text) + "\n</user_query>"
+}
+
+func encodeCursorProject(cwd string) string {
+	s := filepath.ToSlash(filepath.Clean(cwd))
+	s = strings.Trim(s, "/")
+	s = strings.ReplaceAll(s, "/", "-")
+	s = strings.ReplaceAll(s, ":", "-")
+	if s == "" || s == "." {
+		return "workspace"
+	}
+	return s
+}
+
+func (a *Adapter) DefaultTarget(conv *models.Conversation) (string, error) {
+	cwd := adapters.CwdFromMeta(conv)
+	if cwd == "" {
+		cwd, _ = os.Getwd()
+	}
+	id := adapters.NewUUID()
+	dir := filepath.Join(projectsRoot(), encodeCursorProject(cwd), "agent-transcripts", id)
+	return filepath.Join(dir, id+".jsonl"), nil
+}
+
+func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, error) {
+	var err error
+	if strings.TrimSpace(targetPath) == "" {
+		targetPath, err = a.DefaultTarget(conv)
+		if err != nil {
+			return "", err
+		}
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return "", err
+	}
+	f, err := os.Create(targetPath)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	w := bufio.NewWriter(f)
+	for _, msg := range conv.Messages {
+		role := "assistant"
+		switch msg.Role {
+		case models.RoleUser:
+			role = "user"
+		case models.RoleSystem:
+			role = "system"
+		}
+		if err := writeJSONLine(w, map[string]interface{}{
+			"role": role,
+			"message": map[string]interface{}{
+				"content": cursorContentBlocks(msg),
+			},
+		}); err != nil {
+			return "", err
+		}
+	}
+	if err := w.Flush(); err != nil {
+		return "", err
+	}
+	return targetPath, nil
+}
+
+func cursorContentBlocks(msg models.Message) []map[string]interface{} {
+	wrap := msg.Role == models.RoleUser
+	var out []map[string]interface{}
+	for _, p := range msg.EffectiveParts() {
+		switch p.Kind {
+		case models.PartText:
+			text := p.Text
+			if wrap {
+				text = wrapUserQuery(text)
+			}
+			out = append(out, map[string]interface{}{"type": "text", "text": text})
+		case models.PartThinking:
+			out = append(out, map[string]interface{}{"type": "thinking", "thinking": p.Text})
+		case models.PartToolCall:
+			var input interface{} = map[string]interface{}{}
+			if strings.TrimSpace(p.ArgsJSON) != "" {
+				_ = json.Unmarshal([]byte(p.ArgsJSON), &input)
+			}
+			id := p.ID
+			if id == "" {
+				id = adapters.NewUUID()
+			}
+			out = append(out, map[string]interface{}{
+				"type": "tool_use", "id": id, "name": p.Name, "input": input,
+			})
+		case models.PartToolResult:
+			out = append(out, map[string]interface{}{
+				"type":        "tool_result",
+				"tool_use_id": p.ToolCallID,
+				"content":     p.Text,
+				"is_error":    p.IsError,
+			})
+		}
+	}
+	if len(out) == 0 {
+		out = []map[string]interface{}{{"type": "text", "text": ""}}
+	}
+	return out
+}
+
+func writeJSONLine(w *bufio.Writer, v interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(b); err != nil {
+		return err
+	}
+	return w.WriteByte('\n')
 }
