@@ -265,12 +265,18 @@ func parseOpenCodePart(raw string) (models.Part, bool) {
 		if name == "" {
 			name = "tool"
 		}
+		id, _ := part["callID"].(string)
 		args := ""
-		if st := part["state"]; st != nil {
-			b, _ := json.Marshal(st)
-			args = string(b)
+		if st, ok := part["state"].(map[string]interface{}); ok {
+			if in := st["input"]; in != nil {
+				args = marshalJSON(in)
+			} else {
+				args = marshalJSON(st)
+			}
+		} else if st := part["state"]; st != nil {
+			args = marshalJSON(st)
 		}
-		return models.ToolCallPart("", name, args), true
+		return models.ToolCallPart(id, name, args), true
 	default:
 		return models.Part{}, false
 	}
@@ -291,24 +297,100 @@ func partText(raw string) string {
 	return msg.Content + "\n"
 }
 
-func openCodePartPayload(p models.Part) map[string]interface{} {
+func marshalJSON(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+func openCodePartPayload(p models.Part, ms int64, results map[string]string) map[string]interface{} {
 	switch p.Kind {
 	case models.PartThinking:
-		return map[string]interface{}{"type": "reasoning", "text": p.Text}
-	case models.PartToolCall:
-		payload := map[string]interface{}{"type": "tool", "tool": p.Name}
-		if strings.TrimSpace(p.ArgsJSON) != "" {
-			var st interface{}
-			if json.Unmarshal([]byte(p.ArgsJSON), &st) == nil {
-				payload["state"] = st
-			}
+		return map[string]interface{}{
+			"type": "reasoning",
+			"text": p.Text,
+			"time": map[string]int64{"start": ms, "end": ms},
 		}
-		return payload
+	case models.PartToolCall:
+		callID := strings.TrimSpace(p.ID)
+		if callID == "" {
+			callID = adapters.NewPrefixedID("call_")
+		}
+		input := toolInputObject(p.ArgsJSON)
+		output := ""
+		if results != nil {
+			output = results[p.ID]
+		}
+		return map[string]interface{}{
+			"type":   "tool",
+			"tool":   p.Name,
+			"callID": callID,
+			"state": map[string]interface{}{
+				"status":   "completed",
+				"input":    input,
+				"output":   output,
+				"title":    p.Name,
+				"metadata": map[string]interface{}{},
+				"time":     map[string]int64{"start": ms, "end": ms},
+			},
+		}
 	case models.PartToolResult:
 		return map[string]interface{}{"type": "text", "text": "[Tool Result]\n" + p.Text}
 	default:
 		return map[string]interface{}{"type": "text", "text": p.Text}
 	}
+}
+
+func toolInputObject(argsJSON string) map[string]interface{} {
+	if strings.TrimSpace(argsJSON) == "" {
+		return map[string]interface{}{}
+	}
+	var v interface{}
+	if json.Unmarshal([]byte(argsJSON), &v) != nil {
+		return map[string]interface{}{}
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return map[string]interface{}{"value": v}
+	}
+	if _, hasStatus := m["status"]; hasStatus {
+		if in, ok := m["input"].(map[string]interface{}); ok {
+			return in
+		}
+	}
+	return m
+}
+
+func toolResultsByCall(conv *models.Conversation) map[string]string {
+	out := map[string]string{}
+	if conv == nil {
+		return out
+	}
+	for _, msg := range conv.Messages {
+		for _, p := range msg.EffectiveParts() {
+			if p.Kind == models.PartToolResult && strings.TrimSpace(p.ToolCallID) != "" {
+				out[p.ToolCallID] = p.Text
+			}
+		}
+	}
+	return out
+}
+
+func onlyToolResults(parts []models.Part) bool {
+	if len(parts) == 0 {
+		return false
+	}
+	for _, p := range parts {
+		if p.Kind != models.PartToolResult {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *Adapter) DefaultTarget(*models.Conversation) (string, error) {
@@ -341,6 +423,8 @@ func ensureOpenCodeSchema(db *sql.DB) error {
 	return err
 }
 
+const openCodeInjectVersion = "1.18.19"
+
 func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return "", err
@@ -369,6 +453,8 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 	}
 	slug := adapters.NewPrefixedID("imp-")
 	rel := strings.TrimPrefix(filepath.ToSlash(cwd), "/")
+	results := toolResultsByCall(conv)
+	modelRef := map[string]string{"providerID": "opencode", "modelID": "imported"}
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -381,44 +467,81 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 			id, project_id, slug, directory, path, title, version,
 			cost, tokens_input, tokens_output, tokens_reasoning, tokens_cache_read, tokens_cache_write,
 			time_created, time_updated
-		) VALUES (?, 'global', ?, ?, ?, ?, '1.0.0', 0, 0, 0, 0, 0, 0, ?, ?)`,
-		sessionID, slug, cwd, rel, title, now, now)
+		) VALUES (?, 'global', ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, ?, ?)`,
+		sessionID, slug, cwd, rel, title, openCodeInjectVersion, now, now)
 	if err != nil {
 		return "", fmt.Errorf("insert session: %w", err)
 	}
 
+	var lastUserID, lastMsgID string
+	seq := int64(0)
 	for _, msg := range conv.Messages {
-		ms := now
+		parts := msg.EffectiveParts()
+		if onlyToolResults(parts) {
+			continue
+		}
+		if len(parts) == 0 {
+			parts = []models.Part{models.TextPart("")}
+		}
+		ms := now + seq
+		seq++
 		if msg.Timestamp != nil {
-			ms = msg.Timestamp.UnixMilli()
+			ms = msg.Timestamp.UnixMilli() + seq
 		}
 		msgID := adapters.NewPrefixedID("msg_")
 		role := "assistant"
-		switch msg.Role {
-		case models.RoleUser:
+		if msg.Role == models.RoleUser || msg.Role == models.RoleSystem {
 			role = "user"
-		case models.RoleSystem:
-			role = "system"
 		}
-		msgData, _ := json.Marshal(map[string]interface{}{
-			"role": role,
-			"time": map[string]int64{"created": ms},
-		})
+		data := map[string]interface{}{
+			"role":  role,
+			"time":  map[string]int64{"created": ms},
+			"agent": "build",
+		}
+		if role == "user" {
+			data["model"] = modelRef
+			if msg.Role == models.RoleSystem {
+				data["system"] = msg.StringContent()
+			}
+		} else {
+			parent := lastUserID
+			if parent == "" {
+				parent = lastMsgID
+			}
+			if parent == "" {
+				parent = msgID
+			}
+			data["parentID"] = parent
+			data["mode"] = "build"
+			data["modelID"] = modelRef["modelID"]
+			data["providerID"] = modelRef["providerID"]
+			data["path"] = map[string]string{"cwd": cwd, "root": "/"}
+			data["cost"] = 0
+			data["tokens"] = map[string]interface{}{
+				"input": 0, "output": 0, "reasoning": 0,
+				"cache": map[string]int{"read": 0, "write": 0},
+			}
+			data["finish"] = "stop"
+		}
+		msgData, _ := json.Marshal(data)
 		if _, err := tx.Exec(`INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)`,
 			msgID, sessionID, ms, ms, string(msgData)); err != nil {
 			return "", fmt.Errorf("insert message: %w", err)
 		}
-		parts := msg.EffectiveParts()
-		if len(parts) == 0 {
-			parts = []models.Part{models.TextPart("")}
-		}
 		for _, p := range parts {
+			if p.Kind == models.PartToolResult {
+				continue
+			}
 			partID := adapters.NewPrefixedID("prt_")
-			partData, _ := json.Marshal(openCodePartPayload(p))
+			partData, _ := json.Marshal(openCodePartPayload(p, ms, results))
 			if _, err := tx.Exec(`INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)`,
 				partID, msgID, sessionID, ms, ms, string(partData)); err != nil {
 				return "", fmt.Errorf("insert part: %w", err)
 			}
+		}
+		lastMsgID = msgID
+		if role == "user" {
+			lastUserID = msgID
 		}
 	}
 	if err := tx.Commit(); err != nil {

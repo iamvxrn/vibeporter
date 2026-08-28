@@ -266,6 +266,56 @@ func TestInjectExtractPreservesThinkingAndTools(t *testing.T) {
 	}
 }
 
+func TestInjectWritesOpenCodeSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "opencode.db")
+	createInjectSchema(t, dbPath)
+	in := &models.Conversation{
+		Title: "schema",
+		Messages: []models.Message{
+			models.NewMessage(models.RoleUser, []models.Part{models.TextPart("q")}),
+			models.NewMessage(models.RoleAssistant, []models.Part{
+				models.ThinkingPart("plan"),
+				models.TextPart("ok"),
+				models.ToolCallPart("c1", "bash", `{"cmd":"ls"}`),
+			}),
+			models.NewMessage(models.RoleUser, []models.Part{
+				models.ToolResultPart("c1", "a.txt", false),
+			}),
+		},
+		Metadata: map[string]interface{}{"cwd": "/proj"},
+	}
+	id, err := injectSession(dbPath, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db := mustOpen(t, dbPath)
+	defer func() { _ = db.Close() }()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM message WHERE session_id = ?`, id).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("messages=%d err=%v", n, err)
+	}
+	var asstData string
+	if err := db.QueryRow(`SELECT data FROM message WHERE session_id = ? AND json_extract(data,'$.role')='assistant'`, id).Scan(&asstData); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(asstData, `"parentID":"msg_`) {
+		t.Fatalf("missing parentID: %s", asstData)
+	}
+	if !strings.Contains(asstData, `"agent":"build"`) {
+		t.Fatalf("missing agent: %s", asstData)
+	}
+	var toolData string
+	if err := db.QueryRow(`SELECT data FROM part WHERE session_id = ? AND json_extract(data,'$.type')='tool'`, id).Scan(&toolData); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(toolData, `"callID"`) || !strings.Contains(toolData, `"status":"completed"`) {
+		t.Fatalf("tool part: %s", toolData)
+	}
+	if !strings.Contains(toolData, "a.txt") {
+		t.Fatalf("tool output not merged: %s", toolData)
+	}
+}
+
 func TestInjectExtractSystem(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "opencode.db")
 	createInjectSchema(t, dbPath)
@@ -287,8 +337,8 @@ func TestInjectExtractSystem(t *testing.T) {
 	if len(out.Messages) != 2 {
 		t.Fatalf("n=%d", len(out.Messages))
 	}
-	if out.Messages[0].Role != models.RoleSystem || out.Messages[0].Content != "be terse" {
-		t.Fatalf("system: %+v", out.Messages[0])
+	if out.Messages[0].Role != models.RoleUser || out.Messages[0].Content != "be terse" {
+		t.Fatalf("system mapped to user: %+v", out.Messages[0])
 	}
 }
 
