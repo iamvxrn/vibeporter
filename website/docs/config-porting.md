@@ -27,4 +27,4 @@ Vibeporter will:
 
 Any of these agents can be `--from` or `--to`. Matching files are copied (instruction file to instruction file, ignore file to ignore file). Agents without an ignore file skip that copy. Existing target files are never overwritten.
 
-`cursor` is included here as a filename mapping. There is no Cursor chat adapter.
+`cursor` is included here as a filename mapping. Chat extract/list is separate (`vibeporter list cursor`); there is no Cursor inject.

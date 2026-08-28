@@ -19,7 +19,7 @@ Each line is one JSON record:
 - **Updates** (`{ "$set": { ... } }`): patch session metadata.
 - **Rewinds** (`{ "$rewindTo": "<message-id>" }`): drop that message and everything after it.
 
-Because a message line is re-appended as its content and tool calls grow, records are de-duplicated by `id` (last write wins). `info` and `error` records are UI notices and are skipped during extraction.
+Because a message line is re-appended as its content and tool calls grow, records are de-duplicated by `id` (last write wins). `info` and `error` records are UI notices and are skipped during extraction. Extract keeps `thoughts` as thinking parts and `functionCall` / `toolCalls` as tool_call parts.
 
 ## CLI token
 

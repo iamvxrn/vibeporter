@@ -6,6 +6,8 @@ Extract DSH `.zstd` sessions. OpenCode inject creates the SQLite schema when mis
 
 OpenCode locates `opencode.db` via XDG / macOS Application Support / `%APPDATA%`. Gemini extract reads legacy pretty-printed `.json` sessions. Claude project dirs replace `:` so Windows drive letters hash. `port-config` maps configs between any supported agents, not only toward Gemini.
 
+IR messages carry structured parts (text, thinking, tool_call, tool_result). Adapters round-trip tools and thinking. Cursor agent transcripts can be listed and extracted (`--to cursor` is not supported).
+
 CI, lint, and tests: gofmt, golangci-lint, govulncheck, and unit coverage for models, adapters helpers, OpenCode, and CLI commands.
 
 ## [0.2.0] - 2026-08-27

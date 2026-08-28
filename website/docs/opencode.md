@@ -4,7 +4,7 @@ The OpenCode adapter reads chat data from a local SQLite database. The default p
 
 ## Storage Format
 
-OpenCode uses a normalized SQLite schema with `session`, `message`, and `part` tables. Messages are joined with parts to reconstruct conversation content.
+OpenCode uses a normalized SQLite schema with `session`, `message`, and `part` tables. Extract maps `text`, `reasoning`, and `tool` parts into the IR. Inject writes those part types back.
 
 ## Pure Go SQLite
 

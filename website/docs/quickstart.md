@@ -12,6 +12,7 @@ vibeporter list opencode
 vibeporter list gemini
 vibeporter list kimi
 vibeporter list dsh
+vibeporter list cursor
 ```
 
 Each row is a title, project directory, last update, and id (newest first). Use `--json` if you need the file path.

@@ -38,6 +38,7 @@ export default defineConfig({
           { text: 'Gemini CLI', link: '/gemini' },
           { text: 'Kimi Code', link: '/kimicode' },
           { text: 'DeepSeek Harness', link: '/dsh' },
+          { text: 'Cursor', link: '/cursor' },
         ]
       },
       {

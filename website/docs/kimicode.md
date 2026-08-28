@@ -12,9 +12,9 @@ CLI names: `kimicode` or `kimi`.
   agents/main/wire.jsonl
 ```
 
-`wire.jsonl` is an event stream (`turn.prompt`, `context.append_loop_event`), not a flat message log. `list` uses `state.json` title and `workDir` when present.
+`wire.jsonl` is an event stream (`turn.prompt`, `context.append_loop_event`), not a flat message log. Consecutive assistant events (text, thinking, `tool.call`, `tool.result`) merge into one IR message. `list` uses `state.json` title and `workDir` when present.
 
-Inject writes a **new** session (metadata + user prompts + assistant text parts) and appends `session_index.jsonl`. It does not edit existing sessions.
+Inject writes a **new** session and appends `session_index.jsonl`. It does not edit existing sessions.
 
 ## Supported Operations
 

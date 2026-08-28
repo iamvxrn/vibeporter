@@ -20,7 +20,10 @@ graph LR
     C[Gemini CLI] -->|Extractor| IR
     K[Kimi Code] -->|Extractor| IR
     DSH[DeepSeek Harness] -->|Extractor| IR
+    Cur[Cursor] -->|Extractor (read-only)| IR
     IR -->|Injector| D[Claude / OpenCode / Gemini / Kimi / DSH]
 ```
 
-Extract and inject both exist for Claude Code, OpenCode, Gemini CLI, Kimi Code, and DeepSeek Harness. Inject always creates a **new** session and never overwrites one that already exists. `migrate` writes into the target's native store when `--target` is omitted.
+The IR is a list of messages. Each message has a role and **parts**: text, thinking, tool_call, tool_result. `Content` is a plain-text fallback (titles and list previews skip thinking).
+
+Extract and inject both exist for Claude Code, OpenCode, Gemini CLI, Kimi Code, and DeepSeek Harness. Cursor is extract-only. Inject always creates a **new** session and never overwrites one that already exists. `migrate` writes into the target's native store when `--target` is omitted.
