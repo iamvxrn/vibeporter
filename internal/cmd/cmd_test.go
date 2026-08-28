@@ -41,6 +41,20 @@ func TestListUnknownAgent(t *testing.T) {
 	}
 }
 
+func TestApplyMigrateOverrides(t *testing.T) {
+	t.Cleanup(resetMigrateFlags)
+	conv := &models.Conversation{Title: "old", Metadata: map[string]interface{}{"cwd": "/old"}}
+	applyMigrateOverrides(conv)
+	if conv.Title != "old" || conv.Metadata["cwd"] != "/old" {
+		t.Fatalf("empty flags changed conv: %+v", conv)
+	}
+	migrateTitle, migrateCwd = "OSS", "/home/aiden/extra/git"
+	applyMigrateOverrides(conv)
+	if conv.Title != "OSS" || conv.Metadata["cwd"] != "/home/aiden/extra/git" {
+		t.Fatalf("overrides: %+v", conv)
+	}
+}
+
 func TestMigrateUnknownAgents(t *testing.T) {
 	t.Cleanup(resetMigrateFlags)
 	fromAgent, toAgent, sourcePath, targetPath = "nope", "gemini", "x", ""
@@ -204,6 +218,7 @@ func (errExtractor) ListConversations() ([]adapters.ChatInfo, error) {
 
 func resetMigrateFlags() {
 	fromAgent, toAgent, sourcePath, targetPath, portDir = "", "", "", "", ""
+	migrateTitle, migrateCwd = "", ""
 }
 
 func captureStdout(t *testing.T, fn func()) string {

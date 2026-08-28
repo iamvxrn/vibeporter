@@ -6,13 +6,16 @@ import (
 
 	"github.com/spf13/cobra"
 	"vibeporter/internal/adapters"
+	"vibeporter/internal/models"
 )
 
 var (
-	fromAgent  string
-	toAgent    string
-	sourcePath string
-	targetPath string
+	fromAgent    string
+	toAgent      string
+	sourcePath   string
+	targetPath   string
+	migrateTitle string
+	migrateCwd   string
 )
 
 var migrateCmd = &cobra.Command{
@@ -38,6 +41,7 @@ var migrateCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("extracting: %w", err)
 		}
+		applyMigrateOverrides(conv)
 
 		out := strings.TrimSpace(targetPath)
 		if out == "" {
@@ -61,11 +65,25 @@ var migrateCmd = &cobra.Command{
 	},
 }
 
+func applyMigrateOverrides(conv *models.Conversation) {
+	if conv == nil {
+		return
+	}
+	if t := strings.TrimSpace(migrateTitle); t != "" {
+		conv.Title = t
+	}
+	if cwd := strings.TrimSpace(migrateCwd); cwd != "" {
+		adapters.EnsureMeta(conv)["cwd"] = cwd
+	}
+}
+
 func init() {
 	migrateCmd.Flags().StringVar(&fromAgent, "from", "", "Source agent")
 	migrateCmd.Flags().StringVar(&toAgent, "to", "", "Target agent")
 	migrateCmd.Flags().StringVar(&sourcePath, "source", "", "Chat id from list, or a file path")
 	migrateCmd.Flags().StringVar(&targetPath, "target", "", "Optional output path (defaults to the target agent's native store)")
+	migrateCmd.Flags().StringVar(&migrateTitle, "title", "", "Override the conversation title on the target")
+	migrateCmd.Flags().StringVar(&migrateCwd, "cwd", "", "Override the workspace directory stored on the target session")
 
 	_ = migrateCmd.MarkFlagRequired("from")
 	_ = migrateCmd.MarkFlagRequired("to")
