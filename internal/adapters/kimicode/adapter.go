@@ -146,7 +146,7 @@ func extractWire(path string) (*models.Conversation, error) {
 					kind = k
 				}
 			}
-			role := models.RoleUser
+			var role models.Role
 			switch kind {
 			case "user":
 				role = models.RoleUser
