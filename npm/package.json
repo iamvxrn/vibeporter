@@ -1,6 +1,6 @@
 {
   "name": "vibeporter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Thin npm wrapper for the Vibeporter CLI (downloads the GitHub Release binary).",
   "license": "MIT",
   "bin": {
