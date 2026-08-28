@@ -1,11 +1,16 @@
 name: Publish npm wrapper
 
 # Publishes via npm Trusted Publishing (OIDC). No NPM_TOKEN.
-# On npmjs.com → vibeporter → Settings → Trusted Publisher → GitHub Actions:
+# The trusted publisher on npmjs.com must match this filename exactly:
 #   owner: iamvxrn
 #   repository: vibeporter
 #   workflow filename: publish-npm.yml
+# Publishing from release.yml fails with ENEEDAUTH because OIDC is bound
+# to this workflow name, not Release Binaries.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -25,7 +30,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -35,7 +40,7 @@ jobs:
       - name: Publish
         working-directory: npm
         run: |
-          VERSION="${{ inputs.tag }}"
-          VERSION="${VERSION#v}"
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
           npm publish --access public
