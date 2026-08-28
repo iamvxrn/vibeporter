@@ -178,7 +178,7 @@ func TestExtractSession(t *testing.T) {
 	if conv.Title != "Demo" || conv.AgentSource != "opencode" || conv.Metadata["cwd"] != "/work" {
 		t.Fatalf("meta: %+v", conv)
 	}
-	if len(conv.Messages) != 2 {
+	if len(conv.Messages) != 3 {
 		t.Fatalf("messages=%d %+v", len(conv.Messages), conv.Messages)
 	}
 	if conv.Messages[0].Role != models.RoleUser || conv.Messages[0].Content != "hi" {
@@ -189,6 +189,16 @@ func TestExtractSession(t *testing.T) {
 	}
 	if !strings.Contains(conv.Messages[1].Content, "ok") || !strings.Contains(conv.Messages[1].Content, "[Tool Use: bash]") {
 		t.Fatalf("assistant content: %q", conv.Messages[1].Content)
+	}
+	kinds := []models.PartKind{}
+	for _, p := range conv.Messages[1].Parts {
+		kinds = append(kinds, p.Kind)
+	}
+	if len(kinds) != 3 || kinds[0] != models.PartThinking || kinds[1] != models.PartText || kinds[2] != models.PartToolCall {
+		t.Fatalf("asst parts: %+v", conv.Messages[1].Parts)
+	}
+	if conv.Messages[2].Parts[0].Kind != models.PartThinking || conv.Messages[2].Parts[0].Text != "skip" {
+		t.Fatalf("thinking-only: %+v", conv.Messages[2])
 	}
 }
 
@@ -224,6 +234,35 @@ func TestInjectExtractRoundTrip(t *testing.T) {
 	}
 	if out.Metadata["cwd"] != "/proj" {
 		t.Fatalf("cwd: %+v", out.Metadata)
+	}
+}
+
+func TestInjectExtractPreservesThinkingAndTools(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "opencode.db")
+	createInjectSchema(t, dbPath)
+	in := &models.Conversation{
+		Title: "parts",
+		Messages: []models.Message{
+			models.NewMessage(models.RoleAssistant, []models.Part{
+				models.ThinkingPart("plan"),
+				models.TextPart("ok"),
+				models.ToolCallPart("", "bash", `{"cmd":"ls"}`),
+			}),
+		},
+	}
+	id, err := injectSession(dbPath, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := extractSession(dbPath, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Messages) != 1 || len(out.Messages[0].Parts) != 3 {
+		t.Fatalf("round-trip parts: %+v", out.Messages)
+	}
+	if out.Messages[0].Parts[0].Kind != models.PartThinking || out.Messages[0].Parts[2].Name != "bash" {
+		t.Fatalf("parts: %+v", out.Messages[0].Parts)
 	}
 }
 

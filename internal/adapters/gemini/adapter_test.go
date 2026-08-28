@@ -188,3 +188,50 @@ func TestSummarizeGeminiFileUsesFirstUser(t *testing.T) {
 		t.Fatal("expected timestamp")
 	}
 }
+
+func TestExtractInjectThoughtsAndTools(t *testing.T) {
+	adapter := NewAdapter()
+	in := &models.Conversation{
+		Messages: []models.Message{
+			models.NewMessage(models.RoleAssistant, []models.Part{
+				models.ThinkingPart("hmm"),
+				models.TextPart("done"),
+				models.ToolCallPart("", "Read", `{"path":"a.go"}`),
+			}),
+		},
+	}
+	path := filepath.Join(t.TempDir(), "out.jsonl")
+	if _, err := adapter.Inject(in, path); err != nil {
+		t.Fatal(err)
+	}
+	got, err := adapter.Extract(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Messages) != 1 {
+		t.Fatalf("n=%d", len(got.Messages))
+	}
+	kinds := []models.PartKind{}
+	for _, p := range got.Messages[0].Parts {
+		kinds = append(kinds, p.Kind)
+	}
+	if len(kinds) < 3 {
+		t.Fatalf("parts: %+v", got.Messages[0].Parts)
+	}
+	hasThink, hasText, hasTool := false, false, false
+	for _, p := range got.Messages[0].Parts {
+		switch p.Kind {
+		case models.PartThinking:
+			hasThink = p.Text == "hmm"
+		case models.PartText:
+			if p.Text == "done" {
+				hasText = true
+			}
+		case models.PartToolCall:
+			hasTool = p.Name == "Read"
+		}
+	}
+	if !hasThink || !hasText || !hasTool {
+		t.Fatalf("round-trip parts: %+v", got.Messages[0].Parts)
+	}
+}

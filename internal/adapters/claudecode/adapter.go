@@ -65,14 +65,14 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 		if msgType == "user" {
 			role = models.RoleUser
 		}
-		text := firstUserText(data)
-		if text == "" {
+		parts := claudeParts(data)
+		if len(parts) == 0 {
 			continue
 		}
-		if isSlashCommandDump(text) {
+		msg := models.NewMessage(role, parts)
+		if isSlashCommandDump(msg.StringContent()) {
 			continue
 		}
-		msg := models.Message{Role: role, Content: text}
 		if ts, _ := data["timestamp"].(string); ts != "" {
 			msg.Timestamp = adapters.ParseTime(ts)
 		}
@@ -146,7 +146,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 			"sessionId": sessionID,
 			"message": map[string]interface{}{
 				"role":    role,
-				"content": []map[string]string{{"type": "text", "text": msg.Content}},
+				"content": claudeContentBlocks(msg),
 			},
 		}
 		if parent != "" {
@@ -173,6 +173,120 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 		return "", err
 	}
 	return targetPath, nil
+}
+
+func claudeParts(data map[string]interface{}) []models.Part {
+	messageObj, ok := data["message"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	switch content := messageObj["content"].(type) {
+	case string:
+		if strings.TrimSpace(content) == "" {
+			return nil
+		}
+		return []models.Part{models.TextPart(content)}
+	case []interface{}:
+		var parts []models.Part
+		for _, raw := range content {
+			partMap, ok := raw.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			switch partMap["type"] {
+			case "text":
+				if text, _ := partMap["text"].(string); strings.TrimSpace(text) != "" {
+					parts = append(parts, models.TextPart(text))
+				}
+			case "thinking":
+				thought, _ := partMap["thinking"].(string)
+				if thought == "" {
+					thought, _ = partMap["text"].(string)
+				}
+				if strings.TrimSpace(thought) != "" {
+					parts = append(parts, models.ThinkingPart(thought))
+				}
+			case "tool_use":
+				id, _ := partMap["id"].(string)
+				name, _ := partMap["name"].(string)
+				args := marshalJSON(partMap["input"])
+				parts = append(parts, models.ToolCallPart(id, name, args))
+			case "tool_result":
+				id, _ := partMap["tool_use_id"].(string)
+				isErr, _ := partMap["is_error"].(bool)
+				parts = append(parts, models.ToolResultPart(id, claudeResultText(partMap["content"]), isErr))
+			}
+		}
+		return parts
+	default:
+		return nil
+	}
+}
+
+func claudeResultText(v interface{}) string {
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t)
+	case []interface{}:
+		var b strings.Builder
+		for _, item := range t {
+			if m, ok := item.(map[string]interface{}); ok {
+				if text, _ := m["text"].(string); text != "" {
+					b.WriteString(text)
+					b.WriteByte('\n')
+				}
+			}
+		}
+		return strings.TrimSpace(b.String())
+	default:
+		return ""
+	}
+}
+
+func claudeContentBlocks(msg models.Message) []map[string]interface{} {
+	var out []map[string]interface{}
+	for _, p := range msg.EffectiveParts() {
+		switch p.Kind {
+		case models.PartText:
+			out = append(out, map[string]interface{}{"type": "text", "text": p.Text})
+		case models.PartThinking:
+			out = append(out, map[string]interface{}{"type": "thinking", "thinking": p.Text})
+		case models.PartToolCall:
+			var input interface{} = map[string]interface{}{}
+			if strings.TrimSpace(p.ArgsJSON) != "" {
+				_ = json.Unmarshal([]byte(p.ArgsJSON), &input)
+			}
+			id := p.ID
+			if id == "" {
+				id = adapters.NewUUID()
+			}
+			out = append(out, map[string]interface{}{
+				"type": "tool_use", "id": id, "name": p.Name, "input": input,
+			})
+		case models.PartToolResult:
+			out = append(out, map[string]interface{}{
+				"type":        "tool_result",
+				"tool_use_id": p.ToolCallID,
+				"content":     p.Text,
+				"is_error":    p.IsError,
+			})
+		}
+	}
+	if len(out) == 0 {
+		out = []map[string]interface{}{{"type": "text", "text": ""}}
+	}
+	return out
+}
+
+func marshalJSON(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func encodeClaudeProject(cwd string) string {

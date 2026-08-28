@@ -81,19 +81,11 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 		if !keep {
 			continue
 		}
-
-		text := extractText(rec["content"])
-		if toolCalls := extractToolCalls(rec["toolCalls"]); toolCalls != "" {
-			if text != "" {
-				text += "\n"
-			}
-			text += toolCalls
-		}
-		if strings.TrimSpace(text) == "" {
+		parts := geminiParts(rec)
+		if len(parts) == 0 {
 			continue
 		}
-
-		msg := models.Message{Role: role, Content: strings.TrimSpace(text)}
+		msg := models.NewMessage(role, parts)
 		if ts, ok := rec["timestamp"].(string); ok {
 			if parsed, err := time.Parse(time.RFC3339, ts); err == nil {
 				msg.Timestamp = &parsed
@@ -238,24 +230,149 @@ func partText(part interface{}) string {
 	return ""
 }
 
-// extractToolCalls renders the `toolCalls` array a gemini message may carry into
-// human-readable markers, so tool activity survives the migration.
-func extractToolCalls(v interface{}) string {
-	arr, ok := v.([]interface{})
-	if !ok {
-		return ""
-	}
-	var b strings.Builder
-	for _, item := range arr {
-		m, ok := item.(map[string]interface{})
-		if !ok {
-			continue
+func geminiParts(rec map[string]interface{}) []models.Part {
+	var parts []models.Part
+	switch th := rec["thoughts"].(type) {
+	case string:
+		if strings.TrimSpace(th) != "" {
+			parts = append(parts, models.ThinkingPart(th))
 		}
-		if name, ok := m["name"].(string); ok {
-			_, _ = fmt.Fprintf(&b, "[Tool Use: %s]\n", name)
+	case []interface{}:
+		for _, item := range th {
+			if m, ok := item.(map[string]interface{}); ok {
+				if t, _ := m["text"].(string); strings.TrimSpace(t) != "" {
+					parts = append(parts, models.ThinkingPart(t))
+				}
+			}
+		}
+	}
+	switch v := rec["content"].(type) {
+	case string:
+		if strings.TrimSpace(v) != "" {
+			parts = append(parts, models.TextPart(v))
+		}
+	case []interface{}:
+		for _, item := range v {
+			m, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if text, ok := m["text"].(string); ok && strings.TrimSpace(text) != "" {
+				parts = append(parts, models.TextPart(text))
+				continue
+			}
+			if fc, ok := m["functionCall"].(map[string]interface{}); ok {
+				name, _ := fc["name"].(string)
+				args := ""
+				if in := fc["args"]; in != nil {
+					b, _ := json.Marshal(in)
+					args = string(b)
+				} else if in := fc["arguments"]; in != nil {
+					b, _ := json.Marshal(in)
+					args = string(b)
+				}
+				parts = append(parts, models.ToolCallPart("", name, args))
+				continue
+			}
+			if fr, ok := m["functionResponse"].(map[string]interface{}); ok {
+				text := ""
+				if s, ok := fr["response"].(string); ok {
+					text = s
+				} else if s, ok := fr["output"].(string); ok {
+					text = s
+				} else if fr["response"] != nil {
+					b, _ := json.Marshal(fr["response"])
+					text = string(b)
+				}
+				parts = append(parts, models.ToolResultPart("", text, false))
+			}
+		}
+	}
+	hasCall := false
+	for _, p := range parts {
+		if p.Kind == models.PartToolCall {
+			hasCall = true
+			break
+		}
+	}
+	if !hasCall {
+		if arr, ok := rec["toolCalls"].([]interface{}); ok {
+			for _, item := range arr {
+				m, ok := item.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				name, _ := m["name"].(string)
+				if name == "" {
+					continue
+				}
+				args := ""
+				if in := m["args"]; in != nil {
+					b, _ := json.Marshal(in)
+					args = string(b)
+				}
+				parts = append(parts, models.ToolCallPart("", name, args))
+			}
+		}
+	}
+	return parts
+}
+
+func geminiContent(msg models.Message) []map[string]interface{} {
+	var out []map[string]interface{}
+	for _, p := range msg.EffectiveParts() {
+		switch p.Kind {
+		case models.PartText:
+			out = append(out, map[string]interface{}{"text": p.Text})
+		case models.PartToolCall:
+			var args interface{} = map[string]interface{}{}
+			if strings.TrimSpace(p.ArgsJSON) != "" {
+				_ = json.Unmarshal([]byte(p.ArgsJSON), &args)
+			}
+			out = append(out, map[string]interface{}{
+				"functionCall": map[string]interface{}{"name": p.Name, "args": args},
+			})
+		case models.PartToolResult:
+			out = append(out, map[string]interface{}{
+				"functionResponse": map[string]interface{}{"name": p.Name, "output": p.Text},
+			})
+		}
+	}
+	if len(out) == 0 {
+		out = []map[string]interface{}{{"text": msg.Content}}
+	}
+	return out
+}
+
+func geminiThoughts(msg models.Message) string {
+	var b strings.Builder
+	for _, p := range msg.EffectiveParts() {
+		if p.Kind == models.PartThinking && strings.TrimSpace(p.Text) != "" {
+			if b.Len() > 0 {
+				b.WriteByte('\n')
+			}
+			b.WriteString(p.Text)
 		}
 	}
 	return b.String()
+}
+
+func geminiToolCalls(msg models.Message) []map[string]interface{} {
+	var out []map[string]interface{}
+	for _, p := range msg.EffectiveParts() {
+		if p.Kind != models.PartToolCall {
+			continue
+		}
+		item := map[string]interface{}{"name": p.Name}
+		if strings.TrimSpace(p.ArgsJSON) != "" {
+			var args interface{}
+			if json.Unmarshal([]byte(p.ArgsJSON), &args) == nil {
+				item["args"] = args
+			}
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 func (a *Adapter) ListConversations() ([]adapters.ChatInfo, error) {
@@ -398,7 +515,13 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 			"id":        newUUID(),
 			"timestamp": ts,
 			"type":      recType,
-			"content":   []map[string]string{{"text": msg.Content}},
+			"content":   geminiContent(msg),
+		}
+		if thoughts := geminiThoughts(msg); thoughts != "" {
+			rec["thoughts"] = thoughts
+		}
+		if calls := geminiToolCalls(msg); len(calls) > 0 {
+			rec["toolCalls"] = calls
 		}
 		if err := writeJSONLine(w, rec); err != nil {
 			return "", err

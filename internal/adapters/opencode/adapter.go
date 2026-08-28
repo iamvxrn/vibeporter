@@ -217,47 +217,95 @@ func extractSession(dbPath, sessionID string) (*models.Conversation, error) {
 		if err != nil {
 			continue
 		}
-		var b strings.Builder
+		var parts []models.Part
 		for partRows.Next() {
 			var partDataStr string
 			if err := partRows.Scan(&partDataStr); err != nil {
 				continue
 			}
-			b.WriteString(partText(partDataStr))
+			if p, ok := parseOpenCodePart(partDataStr); ok {
+				parts = append(parts, p)
+			}
 		}
 		_ = partRows.Close()
-		text := strings.TrimSpace(b.String())
-		if text == "" {
+		if len(parts) == 0 {
 			continue
 		}
-		msg := models.Message{Role: role, Content: text, Timestamp: adapters.UnixMillisPtr(m.created)}
+		msg := models.NewMessage(role, parts)
+		msg.Timestamp = adapters.UnixMillisPtr(m.created)
 		conv.Messages = append(conv.Messages, msg)
 	}
 
 	return conv, nil
 }
 
-func partText(raw string) string {
+func parseOpenCodePart(raw string) (models.Part, bool) {
 	var part map[string]interface{}
 	if json.Unmarshal([]byte(raw), &part) != nil {
-		return ""
+		return models.Part{}, false
 	}
 	switch part["type"] {
-	case "text", "reasoning":
-		if txt, ok := part["text"].(string); ok && strings.TrimSpace(txt) != "" {
-			if part["type"] == "reasoning" {
-				return ""
-			}
-			return txt + "\n"
+	case "text":
+		txt, _ := part["text"].(string)
+		if strings.TrimSpace(txt) == "" {
+			return models.Part{}, false
 		}
+		return models.TextPart(txt), true
+	case "reasoning":
+		txt, _ := part["text"].(string)
+		if strings.TrimSpace(txt) == "" {
+			return models.Part{}, false
+		}
+		return models.ThinkingPart(txt), true
 	case "tool":
 		name, _ := part["tool"].(string)
 		if name == "" {
 			name = "tool"
 		}
-		return fmt.Sprintf("[Tool Use: %s]\n", name)
+		args := ""
+		if st := part["state"]; st != nil {
+			b, _ := json.Marshal(st)
+			args = string(b)
+		}
+		return models.ToolCallPart("", name, args), true
+	default:
+		return models.Part{}, false
 	}
-	return ""
+}
+
+func partText(raw string) string {
+	p, ok := parseOpenCodePart(raw)
+	if !ok {
+		return ""
+	}
+	msg := models.NewMessage(models.RoleAssistant, []models.Part{p})
+	if p.Kind == models.PartThinking {
+		return ""
+	}
+	if msg.Content == "" {
+		return ""
+	}
+	return msg.Content + "\n"
+}
+
+func openCodePartPayload(p models.Part) map[string]interface{} {
+	switch p.Kind {
+	case models.PartThinking:
+		return map[string]interface{}{"type": "reasoning", "text": p.Text}
+	case models.PartToolCall:
+		payload := map[string]interface{}{"type": "tool", "tool": p.Name}
+		if strings.TrimSpace(p.ArgsJSON) != "" {
+			var st interface{}
+			if json.Unmarshal([]byte(p.ArgsJSON), &st) == nil {
+				payload["state"] = st
+			}
+		}
+		return payload
+	case models.PartToolResult:
+		return map[string]interface{}{"type": "text", "text": "[Tool Result]\n" + p.Text}
+	default:
+		return map[string]interface{}{"type": "text", "text": p.Text}
+	}
 }
 
 func (a *Adapter) DefaultTarget(*models.Conversation) (string, error) {
@@ -354,11 +402,17 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 			msgID, sessionID, ms, ms, string(msgData)); err != nil {
 			return "", fmt.Errorf("insert message: %w", err)
 		}
-		partID := adapters.NewPrefixedID("prt_")
-		partData, _ := json.Marshal(map[string]interface{}{"type": "text", "text": msg.Content})
-		if _, err := tx.Exec(`INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)`,
-			partID, msgID, sessionID, ms, ms, string(partData)); err != nil {
-			return "", fmt.Errorf("insert part: %w", err)
+		parts := msg.EffectiveParts()
+		if len(parts) == 0 {
+			parts = []models.Part{models.TextPart("")}
+		}
+		for _, p := range parts {
+			partID := adapters.NewPrefixedID("prt_")
+			partData, _ := json.Marshal(openCodePartPayload(p))
+			if _, err := tx.Exec(`INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)`,
+				partID, msgID, sessionID, ms, ms, string(partData)); err != nil {
+				return "", fmt.Errorf("insert part: %w", err)
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {

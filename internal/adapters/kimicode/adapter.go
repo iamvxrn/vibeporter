@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -150,7 +149,9 @@ func extractWire(path string) (*models.Conversation, error) {
 			if text == "" {
 				continue
 			}
-			conv.Messages = append(conv.Messages, models.Message{Role: models.RoleUser, Content: text, Timestamp: ts})
+			msg := models.NewMessage(models.RoleUser, []models.Part{models.TextPart(text)})
+			msg.Timestamp = ts
+			conv.Messages = append(conv.Messages, msg)
 		case "context.append_loop_event":
 			ev := asMap(rec["event"])
 			if ev == nil {
@@ -159,23 +160,47 @@ func extractWire(path string) (*models.Conversation, error) {
 			switch ev["type"] {
 			case "content.part":
 				part := asMap(ev["part"])
-				if part == nil || part["type"] != "text" {
+				if part == nil {
 					continue
 				}
-				text, _ := part["text"].(string)
-				text = strings.TrimSpace(text)
-				if text == "" {
-					continue
+				switch part["type"] {
+				case "text":
+					text, _ := part["text"].(string)
+					text = strings.TrimSpace(text)
+					if text == "" {
+						continue
+					}
+					appendAssistantPart(conv, models.TextPart(text), ts)
+				case "thinking", "reasoning":
+					text, _ := part["text"].(string)
+					if strings.TrimSpace(text) != "" {
+						appendAssistantPart(conv, models.ThinkingPart(text), ts)
+					}
 				}
-				conv.Messages = append(conv.Messages, models.Message{Role: models.RoleAssistant, Content: text, Timestamp: ts})
 			case "tool.call":
 				name, _ := ev["name"].(string)
 				if name == "" {
 					continue
 				}
-				conv.Messages = append(conv.Messages, models.Message{
-					Role: models.RoleAssistant, Content: fmt.Sprintf("[Tool Use: %s]", name), Timestamp: ts,
-				})
+				args := ""
+				if in := ev["input"]; in != nil {
+					b, _ := json.Marshal(in)
+					args = string(b)
+				} else if in := ev["arguments"]; in != nil {
+					b, _ := json.Marshal(in)
+					args = string(b)
+				}
+				appendAssistantPart(conv, models.ToolCallPart("", name, args), ts)
+			case "tool.result":
+				text := kimiInputText(ev["output"])
+				if text == "" {
+					text = kimiInputText(ev["result"])
+				}
+				id, _ := ev["id"].(string)
+				if id == "" {
+					id, _ = ev["tool_call_id"].(string)
+				}
+				appendAssistantPart(conv, models.ToolResultPart(id, text, false), ts)
 			}
 		}
 	}
@@ -188,6 +213,21 @@ func extractWire(path string) (*models.Conversation, error) {
 		}
 	}
 	return conv, sc.Err()
+}
+
+func appendAssistantPart(conv *models.Conversation, p models.Part, ts *time.Time) {
+	n := len(conv.Messages)
+	if n > 0 && conv.Messages[n-1].Role == models.RoleAssistant {
+		conv.Messages[n-1].Parts = append(conv.Messages[n-1].Parts, p)
+		conv.Messages[n-1].SyncContent()
+		if ts != nil {
+			conv.Messages[n-1].Timestamp = ts
+		}
+		return
+	}
+	msg := models.NewMessage(models.RoleAssistant, []models.Part{p})
+	msg.Timestamp = ts
+	conv.Messages = append(conv.Messages, msg)
 }
 
 func asMap(v interface{}) map[string]interface{} {
@@ -310,21 +350,38 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 				"type":   "turn.prompt",
 				"time":   ms,
 				"origin": map[string]string{"kind": "user"},
-				"input":  msg.Content,
+				"input":  msg.StringContent(),
 			})
 			continue
 		}
-		part, _ := json.Marshal(map[string]interface{}{
-			"type": "content.part",
-			"part": map[string]string{"type": "text", "text": msg.Content},
-		})
-		var ev map[string]interface{}
-		_ = json.Unmarshal(part, &ev)
-		_ = writeJSONLine(w, map[string]interface{}{
-			"type":  "context.append_loop_event",
-			"time":  ms,
-			"event": ev,
-		})
+		for _, p := range msg.EffectiveParts() {
+			var ev map[string]interface{}
+			switch p.Kind {
+			case models.PartThinking:
+				ev = map[string]interface{}{
+					"type": "content.part",
+					"part": map[string]string{"type": "thinking", "text": p.Text},
+				}
+			case models.PartToolCall:
+				var input interface{} = map[string]interface{}{}
+				if strings.TrimSpace(p.ArgsJSON) != "" {
+					_ = json.Unmarshal([]byte(p.ArgsJSON), &input)
+				}
+				ev = map[string]interface{}{"type": "tool.call", "name": p.Name, "input": input}
+			case models.PartToolResult:
+				ev = map[string]interface{}{"type": "tool.result", "id": p.ToolCallID, "output": p.Text}
+			default:
+				ev = map[string]interface{}{
+					"type": "content.part",
+					"part": map[string]string{"type": "text", "text": p.Text},
+				}
+			}
+			_ = writeJSONLine(w, map[string]interface{}{
+				"type":  "context.append_loop_event",
+				"time":  ms,
+				"event": ev,
+			})
+		}
 	}
 	if err := w.Flush(); err != nil {
 		return "", err

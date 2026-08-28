@@ -119,7 +119,10 @@ func extractLog(path string) (*models.Conversation, error) {
 			if text == "" {
 				continue
 			}
-			conv.Messages = append(conv.Messages, models.Message{Role: models.RoleUser, Content: text, Timestamp: ts})
+			conv.Messages = append(conv.Messages, models.NewMessage(models.RoleUser, []models.Part{models.TextPart(text)}))
+			if ts != nil {
+				conv.Messages[len(conv.Messages)-1].Timestamp = ts
+			}
 		case "assistant/message":
 			data := asMap(rec["data"])
 			text := dshText(data)
@@ -129,7 +132,9 @@ func extractLog(path string) (*models.Conversation, error) {
 			if text == "" {
 				continue
 			}
-			conv.Messages = append(conv.Messages, models.Message{Role: models.RoleAssistant, Content: text, Timestamp: ts})
+			msg := models.NewMessage(models.RoleAssistant, []models.Part{models.TextPart(text)})
+			msg.Timestamp = ts
+			conv.Messages = append(conv.Messages, msg)
 		}
 	}
 	if conv.ID == "" {
@@ -254,7 +259,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 				"time":      ms,
 				"surfaceOp": "add",
 				"data": map[string]interface{}{
-					"content": msg.Content,
+					"content": msg.StringContent(),
 					"source":  map[string]string{"kind": "user"},
 				},
 			}
@@ -268,7 +273,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 					"turn": 0,
 					"step": 0,
 					"message": map[string]interface{}{
-						"content": msg.Content,
+						"content": msg.StringContent(),
 					},
 				},
 			}

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"vibeporter/internal/models"
 )
 
 func TestExtractWirePromptsAndAssistant(t *testing.T) {
@@ -29,14 +31,17 @@ func TestExtractWirePromptsAndAssistant(t *testing.T) {
 	if conv.ID != "session_abc" {
 		t.Fatalf("id %q", conv.ID)
 	}
-	if len(conv.Messages) != 3 {
+	if len(conv.Messages) != 2 {
 		t.Fatalf("messages %d %#v", len(conv.Messages), conv.Messages)
 	}
 	if conv.Messages[0].Content != "hello kimi" {
 		t.Fatalf("user %q", conv.Messages[0].Content)
 	}
-	if conv.Messages[1].Content != "hi there" {
+	if !strings.Contains(conv.Messages[1].Content, "hi there") {
 		t.Fatalf("asst %q", conv.Messages[1].Content)
+	}
+	if len(conv.Messages[1].Parts) != 2 || conv.Messages[1].Parts[1].Kind != models.PartToolCall || conv.Messages[1].Parts[1].Name != "Read" {
+		t.Fatalf("tool part: %+v", conv.Messages[1].Parts)
 	}
 }
 
