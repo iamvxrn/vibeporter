@@ -57,13 +57,9 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 			conv.Title = strings.TrimSpace(title)
 		}
 
-		msgType, _ := data["type"].(string)
-		if msgType != "user" && msgType != "assistant" {
+		role, ok := claudeIRRole(data)
+		if !ok {
 			continue
-		}
-		role := models.RoleAssistant
-		if msgType == "user" {
-			role = models.RoleUser
 		}
 		parts := claudeParts(data)
 		if len(parts) == 0 {
@@ -132,11 +128,12 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 		if msg.Timestamp != nil {
 			ts = msg.Timestamp.UTC().Format(time.RFC3339Nano)
 		}
-		role := "assistant"
-		typ := "assistant"
-		if msg.Role == models.RoleUser {
-			role = "user"
-			typ = "user"
+		role, typ := "assistant", "assistant"
+		switch msg.Role {
+		case models.RoleUser:
+			role, typ = "user", "user"
+		case models.RoleSystem:
+			role, typ = "system", "system"
 		}
 		rec := map[string]interface{}{
 			"type":      typ,
@@ -175,12 +172,40 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 	return targetPath, nil
 }
 
-func claudeParts(data map[string]interface{}) []models.Part {
-	messageObj, ok := data["message"].(map[string]interface{})
-	if !ok {
-		return nil
+func claudeIRRole(data map[string]interface{}) (models.Role, bool) {
+	msgType, _ := data["type"].(string)
+	if msgType == "system" {
+		subtype, _ := data["subtype"].(string)
+		switch subtype {
+		case "init", "compact_boundary", "hook", "status":
+			return "", false
+		}
 	}
-	switch content := messageObj["content"].(type) {
+	if messageObj, ok := data["message"].(map[string]interface{}); ok {
+		if r, _ := messageObj["role"].(string); r == "system" {
+			return models.RoleSystem, true
+		}
+	}
+	switch msgType {
+	case "user":
+		return models.RoleUser, true
+	case "assistant":
+		return models.RoleAssistant, true
+	case "system":
+		return models.RoleSystem, true
+	default:
+		return "", false
+	}
+}
+
+func claudeParts(data map[string]interface{}) []models.Part {
+	var content interface{}
+	if messageObj, ok := data["message"].(map[string]interface{}); ok {
+		content = messageObj["content"]
+	} else {
+		content = data["content"]
+	}
+	switch content := content.(type) {
 	case string:
 		if strings.TrimSpace(content) == "" {
 			return nil

@@ -17,6 +17,9 @@ func TestMessageRole(t *testing.T) {
 	if r, keep := messageRole("gemini"); r != models.RoleAssistant || !keep {
 		t.Errorf("expected gemini -> RoleAssistant (kept), got %v keep=%v", r, keep)
 	}
+	if r, keep := messageRole("system"); r != models.RoleSystem || !keep {
+		t.Errorf("expected system -> RoleSystem (kept), got %v keep=%v", r, keep)
+	}
 	if _, keep := messageRole("info"); keep {
 		t.Errorf("expected info records to be dropped")
 	}
@@ -163,6 +166,31 @@ func TestInjectRoundTrips(t *testing.T) {
 	}
 	if got.Messages[1].Role != models.RoleAssistant || got.Messages[1].Content != "a" {
 		t.Errorf("round-trip assistant message incorrect: %+v", got.Messages[1])
+	}
+}
+
+func TestInjectExtractSystem(t *testing.T) {
+	adapter := NewAdapter()
+	conv := &models.Conversation{
+		Messages: []models.Message{
+			models.NewMessage(models.RoleSystem, []models.Part{models.TextPart("be terse")}),
+			models.NewMessage(models.RoleUser, []models.Part{models.TextPart("q")}),
+			models.NewMessage(models.RoleAssistant, []models.Part{models.TextPart("a")}),
+		},
+	}
+	targetPath := filepath.Join(t.TempDir(), "out.jsonl")
+	if _, err := adapter.Inject(conv, targetPath); err != nil {
+		t.Fatal(err)
+	}
+	got, err := adapter.Extract(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Messages) != 3 {
+		t.Fatalf("n=%d", len(got.Messages))
+	}
+	if got.Messages[0].Role != models.RoleSystem || got.Messages[0].Content != "be terse" {
+		t.Fatalf("system: %+v", got.Messages[0])
 	}
 }
 

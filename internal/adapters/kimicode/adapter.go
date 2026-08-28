@@ -140,16 +140,26 @@ func extractWire(path string) (*models.Conversation, error) {
 		ts := wireTime(rec)
 		switch typ {
 		case "turn.prompt":
+			kind := "user"
 			if origin, _ := rec["origin"].(map[string]interface{}); origin != nil {
-				if kind, _ := origin["kind"].(string); kind != "" && kind != "user" {
-					continue
+				if k, _ := origin["kind"].(string); k != "" {
+					kind = k
 				}
+			}
+			role := models.RoleUser
+			switch kind {
+			case "user":
+				role = models.RoleUser
+			case "system":
+				role = models.RoleSystem
+			default:
+				continue
 			}
 			text := kimiInputText(rec["input"])
 			if text == "" {
 				continue
 			}
-			msg := models.NewMessage(models.RoleUser, []models.Part{models.TextPart(text)})
+			msg := models.NewMessage(role, []models.Part{models.TextPart(text)})
 			msg.Timestamp = ts
 			conv.Messages = append(conv.Messages, msg)
 		case "context.append_loop_event":
@@ -345,11 +355,15 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 		if msg.Timestamp != nil {
 			ms = msg.Timestamp.UnixMilli()
 		}
-		if msg.Role == models.RoleUser {
+		if msg.Role == models.RoleUser || msg.Role == models.RoleSystem {
+			kind := "user"
+			if msg.Role == models.RoleSystem {
+				kind = "system"
+			}
 			_ = writeJSONLine(w, map[string]interface{}{
 				"type":   "turn.prompt",
 				"time":   ms,
-				"origin": map[string]string{"kind": "user"},
+				"origin": map[string]string{"kind": kind},
 				"input":  msg.StringContent(),
 			})
 			continue

@@ -34,13 +34,15 @@ func NewAdapter() *Adapter {
 
 // messageRole maps a Gemini CLI record type to an IR role. The bool reports
 // whether the record is part of the conversation proper — "info" and "error"
-// records are UI notices and are dropped.
+// records are UI notices and are dropped. "system" is kept as RoleSystem.
 func messageRole(recordType string) (models.Role, bool) {
 	switch recordType {
 	case "user":
 		return models.RoleUser, true
 	case "gemini":
 		return models.RoleAssistant, true
+	case "system":
+		return models.RoleSystem, true
 	default:
 		return models.RoleSystem, false
 	}
@@ -504,8 +506,11 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 
 	for _, msg := range conv.Messages {
 		recType := "gemini"
-		if msg.Role == models.RoleUser {
+		switch msg.Role {
+		case models.RoleUser:
 			recType = "user"
+		case models.RoleSystem:
+			recType = "system"
 		}
 		ts := now
 		if msg.Timestamp != nil {

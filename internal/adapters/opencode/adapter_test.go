@@ -266,6 +266,32 @@ func TestInjectExtractPreservesThinkingAndTools(t *testing.T) {
 	}
 }
 
+func TestInjectExtractSystem(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "opencode.db")
+	createInjectSchema(t, dbPath)
+	in := &models.Conversation{
+		Title: "sys",
+		Messages: []models.Message{
+			models.NewMessage(models.RoleSystem, []models.Part{models.TextPart("be terse")}),
+			models.NewMessage(models.RoleUser, []models.Part{models.TextPart("hi")}),
+		},
+	}
+	id, err := injectSession(dbPath, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := extractSession(dbPath, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Messages) != 2 {
+		t.Fatalf("n=%d", len(out.Messages))
+	}
+	if out.Messages[0].Role != models.RoleSystem || out.Messages[0].Content != "be terse" {
+		t.Fatalf("system: %+v", out.Messages[0])
+	}
+}
+
 func TestInjectDefaultTitleAndCwd(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "opencode.db")
 	createInjectSchema(t, dbPath)

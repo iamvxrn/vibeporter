@@ -91,3 +91,30 @@ func TestInjectRoundTrip(t *testing.T) {
 		t.Fatalf("got %d", len(got.Messages))
 	}
 }
+
+func TestInjectExtractSystem(t *testing.T) {
+	t.Setenv("DSH_HOME", t.TempDir())
+	a := NewAdapter()
+	conv := &models.Conversation{
+		Messages: []models.Message{
+			models.NewMessage(models.RoleSystem, []models.Part{models.TextPart("be terse")}),
+			models.NewMessage(models.RoleUser, []models.Part{models.TextPart("q")}),
+			models.NewMessage(models.RoleAssistant, []models.Part{models.TextPart("a")}),
+		},
+		Metadata: map[string]interface{}{"cwd": "/tmp/p"},
+	}
+	out, err := a.Inject(conv, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.Extract(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Messages) != 3 {
+		t.Fatalf("got %d", len(got.Messages))
+	}
+	if got.Messages[0].Role != models.RoleSystem || got.Messages[0].Content != "be terse" {
+		t.Fatalf("system: %+v", got.Messages[0])
+	}
+}

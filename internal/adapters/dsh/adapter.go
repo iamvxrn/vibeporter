@@ -114,12 +114,16 @@ func extractLog(path string) (*models.Conversation, error) {
 		first = false
 		ts := eventTime(rec)
 		switch typ {
-		case "user/message":
+		case "user/message", "system/message":
 			text := dshText(rec["data"])
 			if text == "" {
 				continue
 			}
-			conv.Messages = append(conv.Messages, models.NewMessage(models.RoleUser, []models.Part{models.TextPart(text)}))
+			role := models.RoleUser
+			if typ == "system/message" {
+				role = models.RoleSystem
+			}
+			conv.Messages = append(conv.Messages, models.NewMessage(role, []models.Part{models.TextPart(text)}))
 			if ts != nil {
 				conv.Messages[len(conv.Messages)-1].Timestamp = ts
 			}
@@ -252,7 +256,8 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 			ms = msg.Timestamp.UnixMilli()
 		}
 		var rec map[string]interface{}
-		if msg.Role == models.RoleUser {
+		switch msg.Role {
+		case models.RoleUser:
 			rec = map[string]interface{}{
 				"type":      "user/message",
 				"seq":       seq,
@@ -263,7 +268,18 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 					"source":  map[string]string{"kind": "user"},
 				},
 			}
-		} else {
+		case models.RoleSystem:
+			rec = map[string]interface{}{
+				"type":      "system/message",
+				"seq":       seq,
+				"time":      ms,
+				"surfaceOp": "add",
+				"data": map[string]interface{}{
+					"content": msg.StringContent(),
+					"source":  map[string]string{"kind": "system"},
+				},
+			}
+		default:
 			rec = map[string]interface{}{
 				"type":      "assistant/message",
 				"seq":       seq,

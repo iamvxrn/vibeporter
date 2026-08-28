@@ -80,6 +80,53 @@ func TestExtractInjectToolAndThinking(t *testing.T) {
 	}
 }
 
+func TestExtractInjectSystem(t *testing.T) {
+	a := NewAdapter()
+	in := &models.Conversation{
+		Messages: []models.Message{
+			models.NewMessage(models.RoleSystem, []models.Part{models.TextPart("be terse")}),
+			models.NewMessage(models.RoleUser, []models.Part{models.TextPart("hi")}),
+			models.NewMessage(models.RoleAssistant, []models.Part{models.TextPart("ok")}),
+		},
+	}
+	out, err := a.Inject(in, filepath.Join(t.TempDir(), "sess.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.Extract(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Messages) != 3 {
+		t.Fatalf("n=%d", len(got.Messages))
+	}
+	if got.Messages[0].Role != models.RoleSystem || got.Messages[0].Content != "be terse" {
+		t.Fatalf("system: %+v", got.Messages[0])
+	}
+}
+
+func TestExtractSkipsClaudeInitSystem(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sess.jsonl")
+	body := `{"type":"system","subtype":"init","cwd":"/tmp"}
+{"type":"system","message":{"role":"system","content":[{"type":"text","text":"custom"}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"hi"}]}}
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := NewAdapter().Extract(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Messages) != 2 {
+		t.Fatalf("n=%d %#v", len(got.Messages), got.Messages)
+	}
+	if got.Messages[0].Role != models.RoleSystem || got.Messages[0].Content != "custom" {
+		t.Fatalf("system: %+v", got.Messages[0])
+	}
+}
+
 func TestEncodeClaudeProjectReplacesDriveColon(t *testing.T) {
 	got := encodeClaudeProject("C:/Users/foo")
 	if got != "-C--Users-foo" {

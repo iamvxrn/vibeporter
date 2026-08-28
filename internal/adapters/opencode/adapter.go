@@ -209,8 +209,11 @@ func extractSession(dbPath, sessionID string) (*models.Conversation, error) {
 		_ = json.Unmarshal([]byte(m.data), &msgData)
 		roleStr, _ := msgData["role"].(string)
 		role := models.RoleAssistant
-		if roleStr == "user" {
+		switch roleStr {
+		case "user":
 			role = models.RoleUser
+		case "system":
+			role = models.RoleSystem
 		}
 
 		partRows, err := db.Query(`SELECT data FROM part WHERE message_id = ? ORDER BY time_created ASC`, m.id)
@@ -391,8 +394,11 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 		}
 		msgID := adapters.NewPrefixedID("msg_")
 		role := "assistant"
-		if msg.Role == models.RoleUser {
+		switch msg.Role {
+		case models.RoleUser:
 			role = "user"
+		case models.RoleSystem:
+			role = "system"
 		}
 		msgData, _ := json.Marshal(map[string]interface{}{
 			"role": role,
