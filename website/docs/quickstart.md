@@ -26,6 +26,8 @@ vibeporter migrate \
   --from claudecode \
   --to gemini \
   --source 203f4afc-2fd1-40e9-be7b-fc26d8fc0759
+
+vibeporter migrate --from gemini --to cursor --source <id>
 ```
 
 Behind the scenes, Vibeporter:

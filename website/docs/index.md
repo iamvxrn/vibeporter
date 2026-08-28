@@ -17,7 +17,7 @@ vibeporter is a single Go CLI for migrating chat histories and workspace configu
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Claude Code</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">OpenCode</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Kimi Code</span>
-  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Cursor (extract)</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Cursor</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Pure Go</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Zero Dependencies</span>
 </div>

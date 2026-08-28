@@ -10,7 +10,7 @@ vibeporter list <agent> --json
 vibeporter list <agent> --paths
 ```
 
-**Agents:** `claudecode`, `opencode`, `gemini`, `kimicode` (`kimi`), `dsh` (`dhs`), `cursor` (extract only)
+**Agents:** `claudecode`, `opencode`, `gemini`, `kimicode` (`kimi`), `dsh` (`dhs`), `cursor`
 
 Prints a table of **title**, **project**, **updated**, and **id** (newest first). Titles come from the agent's own name when it has one (Claude `ai-title`, OpenCode `session.title`), otherwise from the first user message.
 
@@ -27,7 +27,7 @@ vibeporter migrate --from <agent> --to <agent> --source <id> --target /tmp/out.j
 
 **Flags:**
 - `--from` — Source agent name
-- `--to` — Target agent name (not `cursor`; extract-only)
+- `--to` — Target agent name
 - `--source` — Chat id from `list`, or a file path
 - `--target` — Optional. When omitted, writes into the target agent's native store.
 
@@ -39,6 +39,6 @@ Translate project configuration files between agent conventions.
 vibeporter port-config --from <agent> --to <agent> --dir <path>
 ```
 
-`cursor` is a `list` / `migrate --from` agent (agent transcripts). It is not a `migrate --to` target. Config-file mapping still works.
+`cursor` is a `list` / `migrate` agent (agent transcripts). Config-file mapping still works independently.
 
 **Supported mappings:** any pair among `claudecode`, `gemini`, `cursor`, `opencode`, and `kimicode`/`kimi`. Instruction files and ignore files are copied to the target names (see [Config Porting](/config-porting)). Existing target files are never overwritten.

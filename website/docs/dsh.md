@@ -10,7 +10,7 @@ CLI names: `dsh` or `dhs`.
 ~/.dsh/sessions/<workspace>/<sessionId>/session.jsonl
 ```
 
-The first line is a `session` header (`id`, `cwd`, `delegationDepth`). Later lines are events; extract keeps `user/message` and `assistant/message`.
+The first line is a `session` header (`id`, `cwd`, `delegationDepth`). Later lines are events; extract keeps `user/message`, `system/message`, and `assistant/message`.
 
 Compressed `session.jsonl.zstd` files are extracted the same way as uncompressed logs.
 

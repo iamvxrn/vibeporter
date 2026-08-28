@@ -15,11 +15,11 @@ Gemini CLI stores each session as an append-only **JSON Lines** file, one per pr
 Each line is one JSON record:
 
 - **Metadata** (first line): `{ "sessionId", "projectHash", "startTime", "lastUpdated", ... }`.
-- **Messages**: `{ "id", "timestamp", "type", "content", ... }` where `type` is `user`, `gemini`, `info`, or `error`. A `gemini` message may also carry `thoughts`, `model`, `toolCalls`, and a `tokens` summary. `content` is a string or an array of parts (`{ "text": ... }`, `{ "functionCall": ... }`, `{ "functionResponse": ... }`).
+- **Messages**: `{ "id", "timestamp", "type", "content", ... }` where `type` is `user`, `gemini`, `system`, `info`, or `error`. A `gemini` message may also carry `thoughts`, `model`, `toolCalls`, and a `tokens` summary. `content` is a string or an array of parts (`{ "text": ... }`, `{ "functionCall": ... }`, `{ "functionResponse": ... }`).
 - **Updates** (`{ "$set": { ... } }`): patch session metadata.
 - **Rewinds** (`{ "$rewindTo": "<message-id>" }`): drop that message and everything after it.
 
-Because a message line is re-appended as its content and tool calls grow, records are de-duplicated by `id` (last write wins). `info` and `error` records are UI notices and are skipped during extraction. Extract keeps `thoughts` as thinking parts and `functionCall` / `toolCalls` as tool_call parts.
+Because a message line is re-appended as its content and tool calls grow, records are de-duplicated by `id` (last write wins). `info` and `error` records are UI notices and are skipped during extraction. Extract keeps `thoughts` as thinking parts, `functionCall` / `toolCalls` as tool_call parts, and `type: "system"` as a system prompt.
 
 ## CLI token
 

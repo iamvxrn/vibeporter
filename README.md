@@ -12,7 +12,7 @@ A CLI utility for migrating chat histories and configuration files between diffe
 ## Features
 
 - Converts chat histories from JSONL or SQLite into a standard format.
-- Supports Claude Code, OpenCode, Gemini CLI, Kimi Code, and DeepSeek Harness (read and write).
+- Supports Claude Code, OpenCode, Gemini CLI, Kimi Code, DeepSeek Harness, and Cursor (read and write).
 - Copies configuration files (e.g., `CLAUDE.md` to `GEMINI.md`).
 
 ## Quick Start
