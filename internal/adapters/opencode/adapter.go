@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -22,8 +23,48 @@ func NewAdapter() *Adapter {
 }
 
 func getDBPath() string {
+	for _, p := range opencodeDBCandidates() {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	cands := opencodeDBCandidates()
+	if len(cands) == 0 {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".local", "share", "opencode", "opencode.db")
+	}
+	return cands[0]
+}
+
+func opencodeDBCandidates() []string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "share", "opencode", "opencode.db")
+	seen := map[string]struct{}{}
+	var out []string
+	add := func(p string) {
+		if p == "" {
+			return
+		}
+		if _, ok := seen[p]; ok {
+			return
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
+	}
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		add(filepath.Join(xdg, "opencode", "opencode.db"))
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		add(filepath.Join(home, "Library", "Application Support", "opencode", "opencode.db"))
+	case "windows":
+		if app := os.Getenv("APPDATA"); app != "" {
+			add(filepath.Join(app, "opencode", "opencode.db"))
+		} else {
+			add(filepath.Join(home, "AppData", "Roaming", "opencode", "opencode.db"))
+		}
+	}
+	add(filepath.Join(home, ".local", "share", "opencode", "opencode.db"))
+	return out
 }
 
 func (a *Adapter) ListConversations() ([]adapters.ChatInfo, error) {

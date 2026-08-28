@@ -1,6 +1,6 @@
 # OpenCode Adapter
 
-The OpenCode adapter reads chat data from a local SQLite database at `~/.local/share/opencode/opencode.db`. `list` uses `session.title`, `directory`, and `time_updated`.
+The OpenCode adapter reads chat data from a local SQLite database. The default path is `~/.local/share/opencode/opencode.db` (Linux), `~/Library/Application Support/opencode/opencode.db` (macOS), or `%APPDATA%\opencode\opencode.db` (Windows). `$XDG_DATA_HOME/opencode/opencode.db` is used when that file exists. `list` uses `session.title`, `directory`, and `time_updated`.
 
 ## Storage Format
 

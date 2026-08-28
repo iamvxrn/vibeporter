@@ -247,6 +247,8 @@ func TestAdapterHomeDB(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
 	dbPath := filepath.Join(home, ".local", "share", "opencode", "opencode.db")
 	createInjectSchema(t, dbPath)
 	if _, err := injectSession(dbPath, &models.Conversation{Title: "home"}); err != nil {
@@ -271,8 +273,41 @@ func TestAdapterListMissingHomeDB(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
 	if _, err := NewAdapter().ListConversations(); err == nil {
 		t.Fatal("expected missing db")
+	}
+}
+
+func TestGetDBPathPrefersExistingXDG(t *testing.T) {
+	xdg := t.TempDir()
+	home := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", xdg)
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	want := filepath.Join(xdg, "opencode", "opencode.db")
+	if err := os.MkdirAll(filepath.Dir(want), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(want, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := getDBPath(); got != want {
+		t.Fatalf("getDBPath = %q want %q", got, want)
+	}
+}
+
+func TestGetDBPathDefaultWhenMissing(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	got := getDBPath()
+	if !strings.HasSuffix(got, "opencode.db") {
+		t.Fatalf("getDBPath = %q", got)
 	}
 }
 
