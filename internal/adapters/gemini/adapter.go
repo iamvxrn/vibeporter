@@ -11,6 +11,7 @@ package gemini
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -46,11 +47,10 @@ func messageRole(recordType string) (models.Role, bool) {
 }
 
 func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
-	file, err := os.Open(sourcePath)
+	data, err := os.ReadFile(sourcePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not open file: %w", err)
 	}
-	defer func() { _ = file.Close() }()
 
 	conv := &models.Conversation{
 		AgentSource: "gemini",
@@ -62,37 +62,12 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 	order := []string{}
 	byID := map[string]map[string]interface{}{}
 
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024) // sessions can have long lines
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(strings.TrimSpace(string(line))) == 0 {
-			continue
+	if isMonolithicJSON(sourcePath) {
+		ingestJSONFile(data, conv, &order, byID)
+	} else {
+		if err := ingestJSONL(data, conv, &order, byID); err != nil {
+			return nil, err
 		}
-
-		var rec map[string]interface{}
-		if err := json.Unmarshal(line, &rec); err != nil {
-			continue // skip malformed lines
-		}
-
-		if rewindTo, ok := rec["$rewindTo"].(string); ok {
-			order = applyRewind(order, byID, rewindTo)
-			continue
-		}
-		if id, ok := rec["id"].(string); ok {
-			if _, seen := byID[id]; !seen {
-				order = append(order, id)
-			}
-			byID[id] = rec
-			continue
-		}
-		// Metadata line ({sessionId, projectHash, ...}) or a $set update.
-		if sid, ok := rec["sessionId"].(string); ok && conv.ID == "" {
-			conv.ID = sid
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
 	}
 
 	if conv.ID == "" {
@@ -128,6 +103,80 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 	}
 
 	return conv, nil
+}
+
+func isMonolithicJSON(path string) bool {
+	lower := strings.ToLower(path)
+	return strings.HasSuffix(lower, ".json") && !strings.HasSuffix(lower, ".jsonl")
+}
+
+func ingestRecord(rec map[string]interface{}, conv *models.Conversation, order *[]string, byID map[string]map[string]interface{}) {
+	if rewindTo, ok := rec["$rewindTo"].(string); ok {
+		*order = applyRewind(*order, byID, rewindTo)
+		return
+	}
+	if id, ok := rec["id"].(string); ok {
+		if _, seen := byID[id]; !seen {
+			*order = append(*order, id)
+		}
+		byID[id] = rec
+		return
+	}
+	if sid, ok := rec["sessionId"].(string); ok && conv.ID == "" {
+		conv.ID = sid
+	}
+}
+
+func ingestJSONL(data []byte, conv *models.Conversation, order *[]string, byID map[string]map[string]interface{}) error {
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		var rec map[string]interface{}
+		if err := json.Unmarshal(line, &rec); err != nil {
+			continue
+		}
+		ingestRecord(rec, conv, order, byID)
+	}
+	return scanner.Err()
+}
+
+func ingestJSONFile(data []byte, conv *models.Conversation, order *[]string, byID map[string]map[string]interface{}) {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return
+	}
+	if trimmed[0] == '[' {
+		var recs []map[string]interface{}
+		if err := json.Unmarshal(trimmed, &recs); err != nil {
+			return
+		}
+		for _, rec := range recs {
+			ingestRecord(rec, conv, order, byID)
+		}
+		return
+	}
+	var obj map[string]interface{}
+	if err := json.Unmarshal(trimmed, &obj); err != nil {
+		return
+	}
+	if sid, ok := obj["sessionId"].(string); ok && conv.ID == "" {
+		conv.ID = sid
+	}
+	if raw, ok := obj["messages"]; ok {
+		if msgs, ok := raw.([]interface{}); ok {
+			for _, m := range msgs {
+				if rec, ok := m.(map[string]interface{}); ok {
+					ingestRecord(rec, conv, order, byID)
+				}
+			}
+		}
+		return
+	}
+	ingestRecord(obj, conv, order, byID)
 }
 
 // applyRewind drops the target message and everything after it, mirroring

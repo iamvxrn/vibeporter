@@ -60,6 +60,52 @@ func TestExtractParsesJSONLSession(t *testing.T) {
 	}
 }
 
+func TestExtractParsesLegacyJSONSession(t *testing.T) {
+	adapter := NewAdapter()
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "session-legacy.json")
+	mock := `{
+  "sessionId": "sess-json",
+  "messages": [
+    {"id":"m1","timestamp":"2026-01-01T00:00:01Z","type":"user","content":[{"text":"hello"}]},
+    {"id":"m2","timestamp":"2026-01-01T00:00:02Z","type":"gemini","content":"hi there"}
+  ]
+}`
+	if err := os.WriteFile(sourcePath, []byte(mock), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	conv, err := adapter.Extract(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conv.ID != "sess-json" {
+		t.Errorf("id: %q", conv.ID)
+	}
+	if len(conv.Messages) != 2 {
+		t.Fatalf("expected 2 messages, got %d", len(conv.Messages))
+	}
+	if conv.Messages[0].Content != "hello" || conv.Messages[1].Content != "hi there" {
+		t.Errorf("messages: %+v", conv.Messages)
+	}
+
+	arrayPath := filepath.Join(tmpDir, "session-array.json")
+	array := `[
+  {"sessionId":"sess-arr"},
+  {"id":"m1","type":"user","content":"ping"},
+  {"id":"m2","type":"gemini","content":"pong"}
+]`
+	if err := os.WriteFile(arrayPath, []byte(array), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := adapter.Extract(arrayPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "sess-arr" || len(got.Messages) != 2 {
+		t.Fatalf("array extract: id=%q n=%d", got.ID, len(got.Messages))
+	}
+}
+
 func TestExtractAppliesRewind(t *testing.T) {
 	adapter := NewAdapter()
 	tmpDir := t.TempDir()
