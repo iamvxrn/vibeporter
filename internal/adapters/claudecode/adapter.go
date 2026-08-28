@@ -178,6 +178,7 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 func encodeClaudeProject(cwd string) string {
 	cwd = filepath.ToSlash(filepath.Clean(cwd))
 	s := strings.ReplaceAll(cwd, "/", "-")
+	s = strings.ReplaceAll(s, ":", "-")
 	if !strings.HasPrefix(s, "-") {
 		s = "-" + s
 	}

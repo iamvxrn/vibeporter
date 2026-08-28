@@ -37,3 +37,14 @@ func TestInjectRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEncodeClaudeProjectReplacesDriveColon(t *testing.T) {
+	got := encodeClaudeProject("C:/Users/foo")
+	if got != "-C--Users-foo" {
+		t.Fatalf("windows path: %q", got)
+	}
+	unix := encodeClaudeProject("/home/foo/proj")
+	if unix != "-home-foo-proj" {
+		t.Fatalf("unix path: %q", unix)
+	}
+}
