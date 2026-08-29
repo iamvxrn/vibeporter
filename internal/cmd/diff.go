@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"vibeporter/internal/adapters"
@@ -90,19 +89,11 @@ Example:
 }
 
 // simulateOpencodeRoundTrip mimics what opencode inject stores without touching the real DB.
-// It applies the same filtering as opencode.injectSession: drop tool_result, drop tool_call without output, skip empty messages.
+// It applies the same filtering as opencode.injectSession: drop tool_result, keep
+// tool_call even without output, skip empty messages.
 func simulateOpencodeRoundTrip(orig *models.Conversation) *models.Conversation {
 	if orig == nil {
 		return &models.Conversation{}
-	}
-	// Build map of tool results by call id, same as opencode.
-	results := map[string]string{}
-	for _, m := range orig.Messages {
-		for _, p := range m.EffectiveParts() {
-			if p.Kind == models.PartToolResult && strings.TrimSpace(p.ToolCallID) != "" {
-				results[p.ToolCallID] = p.Text
-			}
-		}
 	}
 	round := &models.Conversation{
 		ID:          "simulated",
@@ -113,22 +104,11 @@ func simulateOpencodeRoundTrip(orig *models.Conversation) *models.Conversation {
 	}
 	for _, m := range orig.Messages {
 		parts := m.EffectiveParts()
-		// Filter like opencode.injectableParts
+		// Filter like opencode.injectableParts — keep tool calls even without output
 		var filtered []models.Part
 		for _, p := range parts {
-			switch p.Kind {
-			case models.PartToolResult:
+			if p.Kind == models.PartToolResult {
 				continue
-			case models.PartToolCall:
-				out := ""
-				if s, ok := results[p.ID]; ok && strings.TrimSpace(s) != "" {
-					out = s
-				} else if s, ok := results[p.ToolCallID]; ok && strings.TrimSpace(s) != "" {
-					out = s
-				}
-				if strings.TrimSpace(out) == "" {
-					continue
-				}
 			}
 			filtered = append(filtered, p)
 		}

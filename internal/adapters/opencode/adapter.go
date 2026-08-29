@@ -385,9 +385,8 @@ func injectableParts(parts []models.Part, results map[string]string) []models.Pa
 		case models.PartToolResult:
 			continue
 		case models.PartToolCall:
-			if strings.TrimSpace(toolCallOutput(p, results)) == "" {
-				continue
-			}
+			// Keep tool calls even without a matching result — their name/input
+			// are valuable context. Output will be empty string in that case.
 		}
 		out = append(out, p)
 	}

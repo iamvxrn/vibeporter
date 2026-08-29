@@ -258,10 +258,11 @@ func TestInjectExtractPreservesThinkingAndTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Messages) != 1 || len(out.Messages[0].Parts) != 2 {
+	// Tool calls are now preserved even without output (fix for cursor→opencode fidelity)
+	if len(out.Messages) != 1 || len(out.Messages[0].Parts) != 3 {
 		t.Fatalf("round-trip parts: %+v", out.Messages)
 	}
-	if out.Messages[0].Parts[0].Kind != models.PartThinking || out.Messages[0].Parts[1].Text != "ok" {
+	if out.Messages[0].Parts[0].Kind != models.PartThinking || out.Messages[0].Parts[1].Text != "ok" || out.Messages[0].Parts[2].Kind != models.PartToolCall {
 		t.Fatalf("parts: %+v", out.Messages[0].Parts)
 	}
 }
