@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+Cursor extract merges consecutive same-role JSONL chunks (one IR turn per reply). OpenCode inject omits tool parts with no matching result so imported sessions are not padded with empty tool calls.
+
 ## [0.3.0] - 2026-08-28
 
 IR messages carry structured parts (text, thinking, tool_call, tool_result). Adapters round-trip tools, thinking, and system prompts. Cursor agent transcripts can be listed, extracted, and injected as a new session.
