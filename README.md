@@ -43,6 +43,8 @@ vibeporter list claudecode
 vibeporter migrate --from claudecode --to gemini \
   --source <chat-id-from-list>
 
+vibeporter search "fix database bug" --agent gemini
+
 vibeporter port-config --from claudecode --to gemini --dir .
 ```
 

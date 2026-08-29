@@ -31,6 +31,18 @@ vibeporter migrate --from <agent> --to <agent> --source <id> --target /tmp/out.j
 - `--source` — Chat id from `list`, or a file path
 - `--target` — Optional. When omitted, writes into the target agent's native store.
 
+## `search`
+
+Full-text search across all chats of all agents.
+
+```bash
+vibeporter search "fix database bug"
+vibeporter search "auth" --agent gemini --limit 20
+vibeporter search "panic" --json | jq
+```
+
+Scans titles, projects, and all message parts (text, thinking, tool calls/results). `--agent` limits to one agent, otherwise searches `claudecode`, `opencode`, `gemini`, `kimicode`, `dsh`, `cursor`. `--limit` caps results (default 20). `--json` emits `agent/id/title/project/path/snippet/matches`. Human output shows a table sorted by updated time plus snippet preview.
+
 ## `port-config`
 
 Translate project configuration files between agent conventions.
