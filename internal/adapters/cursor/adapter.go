@@ -129,6 +129,12 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 		if len(parts) == 0 {
 			continue
 		}
+		if n := len(conv.Messages); n > 0 && conv.Messages[n-1].Role == role {
+			prev := &conv.Messages[n-1]
+			prev.Parts = append(prev.Parts, parts...)
+			prev.SyncContent()
+			continue
+		}
 		conv.Messages = append(conv.Messages, models.NewMessage(role, parts))
 	}
 	for _, m := range conv.Messages {

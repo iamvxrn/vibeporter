@@ -50,6 +50,35 @@ func TestExtractListAgentTranscript(t *testing.T) {
 	}
 }
 
+func TestExtractMergesConsecutiveAssistantChunks(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("CURSOR_PROJECTS_DIR", root)
+	dir := filepath.Join(root, "p", "agent-transcripts", "id")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "id.jsonl")
+	body := `{"role":"user","message":{"content":[{"type":"text","text":"<user_query>q</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"one"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"path":"a.go"}}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"two"}]}}
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	conv, err := NewAdapter().Extract(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(conv.Messages) != 2 {
+		t.Fatalf("n=%d %#v", len(conv.Messages), conv.Messages)
+	}
+	asst := conv.Messages[1]
+	if len(asst.Parts) != 3 || asst.Parts[0].Text != "one" || asst.Parts[2].Text != "two" {
+		t.Fatalf("merged: %+v", asst.Parts)
+	}
+}
+
 func TestListSkipsSubagents(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("CURSOR_PROJECTS_DIR", root)
