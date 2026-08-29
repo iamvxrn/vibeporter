@@ -43,6 +43,17 @@ vibeporter search "panic" --json | jq
 
 Scans titles, projects, and all message parts (text, thinking, tool calls/results). `--agent` limits to one agent, otherwise searches `claudecode`, `opencode`, `gemini`, `kimicode`, `dsh`, `cursor`. `--limit` caps results (default 20). `--json` emits `agent/id/title/project/path/snippet/matches`. Human output shows a table sorted by updated time plus snippet preview.
 
+## `stats`
+
+Analytics per agent.
+
+```bash
+vibeporter stats
+vibeporter stats --agent gemini --json | jq
+```
+
+Shows chats, messages, text/thinking/tool counts, total chars and estimated tokens (`chars/4`), plus a bar graph of chat distribution. Sorted by agent.
+
 ## `port-config`
 
 Translate project configuration files between agent conventions.
