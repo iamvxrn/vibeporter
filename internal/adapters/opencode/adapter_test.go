@@ -258,10 +258,10 @@ func TestInjectExtractPreservesThinkingAndTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Messages) != 1 || len(out.Messages[0].Parts) != 3 {
+	if len(out.Messages) != 1 || len(out.Messages[0].Parts) != 2 {
 		t.Fatalf("round-trip parts: %+v", out.Messages)
 	}
-	if out.Messages[0].Parts[0].Kind != models.PartThinking || out.Messages[0].Parts[2].Name != "bash" {
+	if out.Messages[0].Parts[0].Kind != models.PartThinking || out.Messages[0].Parts[1].Text != "ok" {
 		t.Fatalf("parts: %+v", out.Messages[0].Parts)
 	}
 }

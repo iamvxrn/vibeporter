@@ -322,10 +322,7 @@ func openCodePartPayload(p models.Part, ms int64, results map[string]string) map
 			callID = adapters.NewPrefixedID("call_")
 		}
 		input := toolInputObject(p.ArgsJSON)
-		output := ""
-		if results != nil {
-			output = results[p.ID]
-		}
+		output := toolCallOutput(p, results)
 		return map[string]interface{}{
 			"type":   "tool",
 			"tool":   p.Name,
@@ -381,16 +378,30 @@ func toolResultsByCall(conv *models.Conversation) map[string]string {
 	return out
 }
 
-func onlyToolResults(parts []models.Part) bool {
-	if len(parts) == 0 {
-		return false
-	}
+func injectableParts(parts []models.Part, results map[string]string) []models.Part {
+	var out []models.Part
 	for _, p := range parts {
-		if p.Kind != models.PartToolResult {
-			return false
+		switch p.Kind {
+		case models.PartToolResult:
+			continue
+		case models.PartToolCall:
+			if strings.TrimSpace(toolCallOutput(p, results)) == "" {
+				continue
+			}
 		}
+		out = append(out, p)
 	}
-	return true
+	return out
+}
+
+func toolCallOutput(p models.Part, results map[string]string) string {
+	if results == nil {
+		return ""
+	}
+	if s := results[p.ID]; s != "" {
+		return s
+	}
+	return results[p.ToolCallID]
 }
 
 func (a *Adapter) DefaultTarget(*models.Conversation) (string, error) {
@@ -476,12 +487,9 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 	var lastUserID, lastMsgID string
 	seq := int64(0)
 	for _, msg := range conv.Messages {
-		parts := msg.EffectiveParts()
-		if onlyToolResults(parts) {
-			continue
-		}
+		parts := injectableParts(msg.EffectiveParts(), results)
 		if len(parts) == 0 {
-			parts = []models.Part{models.TextPart("")}
+			continue
 		}
 		ms := now + seq
 		seq++
@@ -529,9 +537,6 @@ func injectSession(dbPath string, conv *models.Conversation) (string, error) {
 			return "", fmt.Errorf("insert message: %w", err)
 		}
 		for _, p := range parts {
-			if p.Kind == models.PartToolResult {
-				continue
-			}
 			partID := adapters.NewPrefixedID("prt_")
 			partData, _ := json.Marshal(openCodePartPayload(p, ms, results))
 			if _, err := tx.Exec(`INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)`,
