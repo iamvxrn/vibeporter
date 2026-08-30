@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"vibeporter/internal/adapters"
+	"vibeporter/internal/adapters/antigravity"
 	"vibeporter/internal/adapters/claudecode"
 	"vibeporter/internal/adapters/cursor"
+	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/gemini"
 	"vibeporter/internal/adapters/opencode"
 	"vibeporter/internal/models"
@@ -48,36 +50,50 @@ func TestFidelityRoundTripPerAdapter(t *testing.T) {
 		name    string
 		ctor    func() interface{ Inject(*models.Conversation, string) (string, error); Extract(string) (*models.Conversation, error) }
 		isDB    bool
+		envRoot string // env to isolate
 	}{
 		{"claudecode", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return claudecode.NewAdapter() }, false},
+		} { return claudecode.NewAdapter() }, false, ""},
 		{"gemini", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return gemini.NewAdapter() }, false},
+		} { return gemini.NewAdapter() }, false, ""},
 		{"cursor", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return cursor.NewAdapter() }, false},
+		} { return cursor.NewAdapter() }, false, ""},
 		{"opencode", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return opencode.NewAdapter() }, true},
+		} { return opencode.NewAdapter() }, true, "HOME"},
+		{"antigravity", func() interface {
+			Inject(*models.Conversation, string) (string, error)
+			Extract(string) (*models.Conversation, error)
+		} { return antigravity.NewAdapter() }, false, "ANTIGRAVITY"},
+		{"kimicode", func() interface {
+			Inject(*models.Conversation, string) (string, error)
+			Extract(string) (*models.Conversation, error)
+		} { return kimicode.NewAdapter() }, false, "KIMI"},
 	}
 
 	syn := syntheticConversation()
 	for _, tc := range adaptersToTest {
 		t.Run(tc.name+" inject+extract", func(t *testing.T) {
-			// For opencode, use HOME-based DB so Inject and Extract share same DB
-			var tmpHome string
-			if tc.isDB {
-				tmpHome = t.TempDir()
+			// Isolate DB/file adapters
+			if tc.envRoot == "HOME" {
+				tmpHome := t.TempDir()
 				t.Setenv("HOME", tmpHome)
 				t.Setenv("USERPROFILE", tmpHome)
 				t.Setenv("XDG_DATA_HOME", "")
 				t.Setenv("APPDATA", filepath.Join(tmpHome, "AppData", "Roaming"))
+			} else if tc.envRoot == "ANTIGRAVITY" {
+				tmpBrain := t.TempDir()
+				t.Setenv("ANTIGRAVITY_BRAIN_DIR", tmpBrain)
+			} else if tc.envRoot == "KIMI" {
+				tmpKimi := t.TempDir()
+				t.Setenv("KIMI_CODE_HOME", tmpKimi)
 			}
 			adapter := tc.ctor()
 			var target string
@@ -161,6 +177,35 @@ func TestFidelityCrossAdapter(t *testing.T) {
 	if !containsQuery(round, "Готово") && !containsQuery(round, "базой") && !containsQuery(round, "hello") {
 		t.Fatalf("cross round-trip lost content, messages %+v", round.Messages)
 	}
+	// Also cross Antigravity → Opencode
+	t.Run("antigravity->opencode", func(t *testing.T) {
+		tmpAg := t.TempDir()
+		t.Setenv("ANTIGRAVITY_BRAIN_DIR", tmpAg)
+		agAdapter := antigravity.NewAdapter()
+		// Inject syn to antigravity
+		writtenAg, err := agAdapter.Inject(syn, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		interAg, err := agAdapter.Extract(writtenAg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Then to opencode
+		tmpHome2 := t.TempDir()
+		t.Setenv("HOME", tmpHome2)
+		t.Setenv("USERPROFILE", tmpHome2)
+		t.Setenv("XDG_DATA_HOME", "")
+		t.Setenv("APPDATA", filepath.Join(tmpHome2, "AppData", "Roaming"))
+		written2, _ := opencodeAdapter.Inject(interAg, "")
+		round2, _ := opencodeAdapter.Extract(written2)
+		if len(round2.Messages) == 0 {
+			t.Fatalf("ag->opencode empty")
+		}
+		if !containsQuery(round2, "Готово") && !containsQuery(round2, "базой") {
+			t.Fatalf("ag->opencode lost")
+		}
+	})
 	// Verify tool calls survived (opencode drops tool_result, so allow 2)
 	_, _, wantTools := countParts(syn)
 	_, _, gotTools := countParts(round)
