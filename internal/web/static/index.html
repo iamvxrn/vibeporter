@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>vibeporter — migrate chats between AI agents</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand">vibeporter <span>web</span> <small>prototype</small></div>
+    <nav><a href="#app">App</a><a href="https://vibeporter.pages.dev" target="_blank">Docs</a></nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Migrate chats between <span>any</span> AI agents</h1>
+    <p>Claude Code · Cursor · OpenCode · Antigravity · Kimi · Gemini — one hub for all your AI chats. Search, diff, and migrate with a click.</p>
+    <div class="hero-actions">
+      <a href="#app" class="btn primary">Open hub →</a>
+      <code>vibeporter search "fix database bug"</code>
+    </div>
+    <div id="statsBar" class="stats-bar">loading stats…</div>
+  </div>
+</section>
+
+<section id="app" class="app">
+  <aside class="sidebar">
+    <div class="search-box">
+      <input id="q" placeholder="Search all chats… (e.g. синий ежик)" />
+      <button id="searchBtn">Search</button>
+    </div>
+    <div class="agent-tabs" id="agentTabs"></div>
+    <div class="muted" style="padding:8px 12px;font-size:12px">Drag a chat to another agent to migrate (or use buttons). Click to preview.</div>
+    <div id="chatList" class="chat-list"></div>
+  </aside>
+  <main class="main">
+    <div id="previewHeader" class="preview-header">Select a chat to preview</div>
+    <div id="preview" class="preview"></div>
+    <div id="diffPanel" class="diff-panel hidden"></div>
+  </main>
+  <aside class="inspector">
+    <h3>Migrate</h3>
+    <label>From <select id="fromSel"></select></label>
+    <label>To <select id="toSel"></select></label>
+    <button id="diffBtn" class="btn">Diff</button>
+    <button id="migrateBtn" class="btn primary">Migrate →</button>
+    <div id="migrateStatus" class="muted"></div>
+    <hr>
+    <h4>Tip</h4>
+    <p class="muted">CLI: <code>vibeporter migrate --from X --to Y --source &lt;id&gt;</code></p>
+    <p class="muted">All data stays local. No cloud.</p>
+  </aside>
+</section>
+
+<footer class="footer">Prototype — <code>vibeporter serve</code> on <span id="addr"></span> · <a href="https://github.com/iamvxrn/vibeporter">GitHub</a></footer>
+<script src="app.js"></script>
+</body>
+</html>
