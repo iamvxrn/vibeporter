@@ -10,8 +10,8 @@ import (
 	"vibeporter/internal/adapters/antigravity"
 	"vibeporter/internal/adapters/claudecode"
 	"vibeporter/internal/adapters/cursor"
-	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/gemini"
+	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/opencode"
 	"vibeporter/internal/models"
 )
@@ -47,35 +47,50 @@ func syntheticConversation() *models.Conversation {
 
 func TestFidelityRoundTripPerAdapter(t *testing.T) {
 	adaptersToTest := []struct {
-		name    string
-		ctor    func() interface{ Inject(*models.Conversation, string) (string, error); Extract(string) (*models.Conversation, error) }
+		name string
+		ctor func() interface {
+			Inject(*models.Conversation, string) (string, error)
+			Extract(string) (*models.Conversation, error)
+		}
 		isDB    bool
 		envRoot string // env to isolate
 	}{
 		{"claudecode", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return claudecode.NewAdapter() }, false, ""},
+		} {
+			return claudecode.NewAdapter()
+		}, false, ""},
 		{"gemini", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return gemini.NewAdapter() }, false, ""},
+		} {
+			return gemini.NewAdapter()
+		}, false, ""},
 		{"cursor", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return cursor.NewAdapter() }, false, ""},
+		} {
+			return cursor.NewAdapter()
+		}, false, ""},
 		{"opencode", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return opencode.NewAdapter() }, true, "HOME"},
+		} {
+			return opencode.NewAdapter()
+		}, true, "HOME"},
 		{"antigravity", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return antigravity.NewAdapter() }, false, "ANTIGRAVITY"},
+		} {
+			return antigravity.NewAdapter()
+		}, false, "ANTIGRAVITY"},
 		{"kimicode", func() interface {
 			Inject(*models.Conversation, string) (string, error)
 			Extract(string) (*models.Conversation, error)
-		} { return kimicode.NewAdapter() }, false, "KIMI"},
+		} {
+			return kimicode.NewAdapter()
+		}, false, "KIMI"},
 	}
 
 	syn := syntheticConversation()
