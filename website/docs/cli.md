@@ -10,7 +10,7 @@ vibeporter list <agent> --json
 vibeporter list <agent> --paths
 ```
 
-**Agents:** `claudecode`, `opencode`, `gemini`, `kimicode` (`kimi`), `dsh` (`dhs`), `cursor`
+**Agents:** `claudecode`, `opencode`, `gemini`, `antigravity` (`ag`), `kimicode` (`kimi`), `dsh` (`dhs`), `cursor`
 
 Prints a table of **title**, **project**, **updated**, and **id** (newest first). Titles come from the agent's own name when it has one (Claude `ai-title`, OpenCode `session.title`), otherwise from the first user message.
 
@@ -41,7 +41,7 @@ vibeporter search "auth" --agent gemini --limit 20
 vibeporter search "panic" --json | jq
 ```
 
-Scans titles, projects, and all message parts (text, thinking, tool calls/results). `--agent` limits to one agent, otherwise searches `claudecode`, `opencode`, `gemini`, `kimicode`, `dsh`, `cursor`. `--limit` caps results (default 20). `--json` emits `agent/id/title/project/path/snippet/matches`. Human output shows a table sorted by updated time plus snippet preview.
+Scans titles, projects, and all message parts (text, thinking, tool calls/results). `--agent` limits to one agent, otherwise searches `claudecode`, `opencode`, `gemini`, `antigravity` (`ag`), `kimicode`, `dsh`, `cursor`. `--limit` caps results (default 20). `--json` emits `agent/id/title/project/path/snippet/matches`. Human output shows a table sorted by updated time plus snippet preview.
 
 ## `stats`
 
