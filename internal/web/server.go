@@ -347,10 +347,10 @@ func handleDiff(w http.ResponseWriter, r *http.Request) {
 		return m
 	}
 	writeJSON(w, map[string]interface{}{
-		"from":     map[string]interface{}{"id": orig.ID, "title": orig.Title, "counts": counts(orig)},
-		"to":       map[string]interface{}{"id": round.ID, "title": round.Title, "counts": counts(round)},
-		"orig":     orig,
-		"round":    round,
+		"from":      map[string]interface{}{"id": orig.ID, "title": orig.Title, "counts": counts(orig)},
+		"to":        map[string]interface{}{"id": round.ID, "title": round.Title, "counts": counts(round)},
+		"orig":      orig,
+		"round":     round,
 		"fromAgent": from,
 		"toAgent":   to,
 	})
@@ -388,7 +388,7 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rows = append(rows, map[string]interface{}{
-			"agent": ag, "chats": len(chats), "messages": messages, "text": text, "thinking": thinking, "tools": tools, "chars": chars, "tokens_est": (chars+3)/4,
+			"agent": ag, "chats": len(chats), "messages": messages, "text": text, "thinking": thinking, "tools": tools, "chars": chars, "tokens_est": (chars + 3) / 4,
 		})
 	}
 	writeJSON(w, rows)
