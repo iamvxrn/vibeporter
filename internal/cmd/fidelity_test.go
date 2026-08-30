@@ -97,16 +97,17 @@ func TestFidelityRoundTripPerAdapter(t *testing.T) {
 	for _, tc := range adaptersToTest {
 		t.Run(tc.name+" inject+extract", func(t *testing.T) {
 			// Isolate DB/file adapters
-			if tc.envRoot == "HOME" {
+			switch tc.envRoot {
+			case "HOME":
 				tmpHome := t.TempDir()
 				t.Setenv("HOME", tmpHome)
 				t.Setenv("USERPROFILE", tmpHome)
 				t.Setenv("XDG_DATA_HOME", "")
 				t.Setenv("APPDATA", filepath.Join(tmpHome, "AppData", "Roaming"))
-			} else if tc.envRoot == "ANTIGRAVITY" {
+			case "ANTIGRAVITY":
 				tmpBrain := t.TempDir()
 				t.Setenv("ANTIGRAVITY_BRAIN_DIR", tmpBrain)
-			} else if tc.envRoot == "KIMI" {
+			case "KIMI":
 				tmpKimi := t.TempDir()
 				t.Setenv("KIMI_CODE_HOME", tmpKimi)
 			}
