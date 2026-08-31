@@ -64,6 +64,7 @@ func Serve(addr string) error {
 	mux.HandleFunc("/api/conversation", handleConversation)
 	mux.HandleFunc("/api/search", handleSearch)
 	mux.HandleFunc("/api/diff", handleDiff)
+	mux.HandleFunc("/api/migrate", handleMigrate)
 	mux.HandleFunc("/api/stats", handleStats)
 	fmt.Printf("vibeporter web at http://%s\n", addr)
 	return http.ListenAndServe(addr, withCORS(mux))
@@ -159,7 +160,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "q required", 400)
 		return
 	}
-	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini"}
+	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"}
 	if agent != "" {
 		agents = []string{agent}
 	}
@@ -359,6 +360,63 @@ func handleDiff(w http.ResponseWriter, r *http.Request) {
 		"fromAgent": from,
 		"toAgent":   to,
 	})
+}
+
+func handleMigrate(w http.ResponseWriter, r *http.Request) {
+	from := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("from")))
+	to := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("to")))
+	source := strings.TrimSpace(r.URL.Query().Get("source"))
+	if r.Method == "POST" {
+		var body struct {
+			From   string `json:"from"`
+			To     string `json:"to"`
+			Source string `json:"source"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.From != "" {
+			from = strings.ToLower(strings.TrimSpace(body.From))
+		}
+		if body.To != "" {
+			to = strings.ToLower(strings.TrimSpace(body.To))
+		}
+		if body.Source != "" {
+			source = strings.TrimSpace(body.Source)
+		}
+	}
+	if from == "" || to == "" || source == "" {
+		http.Error(w, "from, to, source required", 400)
+		return
+	}
+	fromExt, ok := extractors[from]
+	if !ok {
+		http.Error(w, "unknown from", 400)
+		return
+	}
+	toInj, ok := injectors[to]
+	if !ok {
+		http.Error(w, "unknown to", 400)
+		return
+	}
+	path := source
+	if chats, _ := fromExt.ListConversations(); len(chats) > 0 {
+		for _, c := range chats {
+			if c.ID == source || c.Path == source {
+				path = c.Path
+				break
+			}
+		}
+	}
+	orig, err := fromExt.Extract(path)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	written, err := toInj.Inject(orig, "")
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	writeJSON(w, map[string]interface{}{"from": from, "to": to, "source": source, "target": written, "title": orig.Title})
 }
 
 func handleStats(w http.ResponseWriter, r *http.Request) {

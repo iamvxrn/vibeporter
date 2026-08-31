@@ -1,5 +1,5 @@
 let chats = [], filtered = [], selected = null;
-let agents = ["claudecode","cursor","opencode","antigravity","kimicode","gemini"];
+let agents = ["claudecode","cursor","opencode","antigravity","kimicode","gemini","windsurf"];
 let activeAgent = "all";
 
 async function fetchJSON(url){
@@ -151,9 +151,21 @@ async function doMigrate(){
   const to = document.getElementById('toSel').value;
   const status = document.getElementById('migrateStatus');
   status.textContent = 'migrating…';
-  // use existing migrate API via diff? For prototype just show message
-  // In real app we'd POST to /api/migrate
-  status.textContent = `Would run: vibeporter migrate --from ${from} --to ${to} --source ${selected.ID} (prototype: run in terminal)`;
+  try{
+    const r = await fetch('/api/migrate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({from, to, source: selected.ID})
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || r.statusText);
+    status.textContent = `Migrated ${from} → ${to}: ${j.target} — refresh list`;
+    // refresh chats for target agent
+    const fresh = await fetchJSON(`/api/chats?agent=${encodeURIComponent(to)}`);
+    // optionally select new chat
+  }catch(e){
+    status.textContent = 'migrate failed: '+e.message;
+  }
 }
 
 document.getElementById('searchBtn').onclick = doSearch;
