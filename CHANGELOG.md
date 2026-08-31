@@ -2,7 +2,19 @@
 
 ## [Unreleased]
 
-Cursor extract merges consecutive same-role JSONL chunks (one IR turn per reply). OpenCode inject omits tool parts with no matching result so imported sessions are not padded with empty tool calls.
+## [0.4.0] - 2026-08-30
+
+The search + stats + hub release.
+
+- **Search** — `vibeporter search "fix database bug" [--agent gemini] [--limit 20] [--json]` full-text across all agents' titles, projects, and message parts (text, thinking, tool calls) with centered snippet and match count (`internal/cmd/search.go`)
+- **Stats** — `vibeporter stats [--agent X] [--json]` per-agent `chats/messages/text/thinking/tools/chars/tokens~` with bar graph (`internal/cmd/stats.go`)
+- **Antigravity** — new adapter for `~/.gemini/antigravity/brain/*/transcript.jsonl` (`antigravity`/`ag`) with `List`/`Extract`/`Inject` and 0-diff to `opencode`/`claudecode` (`internal/adapters/antigravity`)
+- **Windsurf** — new adapter for `~/.windsurf`/`~/.codeium/windsurf` (`windsurf`/`wind`) with JSONL `role/message.content` handling (`internal/adapters/windsurf`)
+- **Web UI prototype** — `vibeporter serve` (`--addr :8080`) serves `landing + opencode-style hub` at `internal/web` with `/api/agents|chats|conversation|search|diff|migrate|stats`, muted palette, drag, preview, and real `POST /api/migrate` (`internal/web/server.go`, `static/*`)
+- **Fidelity** — preserve tool calls in `opencode` even without `tool_result` output (fix `cursor → opencode` `1259 → 0` → `0 diff`), update `simulateOpencodeRoundTrip`, synthetic round-trip tests for 7 adapters (`internal/cmd/fidelity_test.go`)
+- **Docs** — `README` and `website/docs/cli.md` list `antigravity`/`windsurf`, `search`/`stats`/`serve` sections
+
+Fixes `opencode` tool-call loss that caused `что мы делали` to return garbage after `cursor → opencode` migration. Previous unreleased fix remains: cursor merges same-role chunks, opencode inject behavior now documented.
 
 ## [0.3.0] - 2026-08-28
 
