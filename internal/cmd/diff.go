@@ -121,9 +121,14 @@ func simulateOpencodeRoundTrip(orig *models.Conversation) *models.Conversation {
 }
 
 func printDiffHuman(orig, round *models.Conversation, from, to string) {
-	fmt.Printf("Diff %s → %s  %q\n", from, to, orig.Title)
-	fmt.Printf("  Source ID: %s  Messages: %d\n", orig.ID, len(orig.Messages))
-	fmt.Printf("  Round-tripped ID: %s  Messages: %d\n", round.ID, len(round.Messages))
+	fmt.Printf("%s %s %s %s  %s\n",
+		colorize(colorBrightMagenta+colorBold, "◈ Diff"),
+		colorize(agentColor(from)+colorBold, from),
+		colorize(colorDim, "→"),
+		colorize(agentColor(to)+colorBold, to),
+		colorize(colorDim, fmt.Sprintf("%q", orig.Title)))
+	fmt.Printf("  %s %s  %s %d\n", colorize(colorDim, "Source ID:"), colorize(colorCyan, orig.ID), colorize(colorDim, "Messages:"), len(orig.Messages))
+	fmt.Printf("  %s %s  %s %d\n", colorize(colorDim, "Round-tripped ID:"), colorize(colorCyan, round.ID), colorize(colorDim, "Messages:"), len(round.Messages))
 	fmt.Println()
 
 	counts := func(conv *models.Conversation) map[models.PartKind]int {
@@ -142,41 +147,61 @@ func printDiffHuman(orig, round *models.Conversation, from, to string) {
 	roundCounts := counts(round)
 
 	kinds := []models.PartKind{models.PartText, models.PartThinking, models.PartToolCall, models.PartToolResult, "system"}
-	fmt.Println("Parts:")
-	fmt.Printf("  %-12s  original  round-tripped  diff\n", "kind")
+	fmt.Println(colorize(colorBrightCyan+colorBold, "Parts:"))
+	fmt.Printf("  %s  %s  %s  %s\n",
+		colorize(colorDim+colorUnderline, fmt.Sprintf("%-12s", "kind")),
+		colorize(colorDim, "original"),
+		colorize(colorDim, "round-tripped"),
+		colorize(colorDim, "diff"))
 	for _, k := range kinds {
 		o := origCounts[k]
 		r := roundCounts[k]
 		diff := r - o
 		sign := ""
+		diffColor := colorDim
 		if diff > 0 {
 			sign = "+"
+			diffColor = colorBrightGreen
+		} else if diff < 0 {
+			diffColor = colorBrightRed
 		}
 		if o == 0 && r == 0 {
 			continue
 		}
-		fmt.Printf("  %-12s  %8d  %13d  %s%d\n", k, o, r, sign, diff)
+		kindDisp := colorize(colorBold, fmt.Sprintf("%-12s", k))
+		if diff < 0 {
+			kindDisp = colorize(colorYellow, fmt.Sprintf("%-12s", k))
+		}
+		fmt.Printf("  %s  %8s  %13s  %s\n",
+			kindDisp,
+			colorize(colorDim, fmt.Sprintf("%d", o)),
+			colorize(colorBold, fmt.Sprintf("%d", r)),
+			colorize(diffColor+colorBold, fmt.Sprintf("%s%d", sign, diff)))
 	}
 	fmt.Println()
 
 	lostThinking := origCounts[models.PartThinking] - roundCounts[models.PartThinking]
 	lostTools := (origCounts[models.PartToolCall] + origCounts[models.PartToolResult]) - (roundCounts[models.PartToolCall] + roundCounts[models.PartToolResult])
+	hasLoss := false
 	if lostThinking > 0 {
-		fmt.Printf("  ⚠ %d thinking block(s) would be dropped (target does not store reasoning as thinking)\n", lostThinking)
+		fmt.Printf("  %s %s\n", colorize(colorBrightYellow+colorBold, "⚠"), colorize(colorBrightYellow, fmt.Sprintf("%d thinking block(s) would be dropped (target does not store reasoning as thinking)", lostThinking)))
+		hasLoss = true
 	}
 	if lostTools > 0 {
-		fmt.Printf("  ⚠ %d tool call/result part(s) would be dropped or merged\n", lostTools)
+		fmt.Printf("  %s %s\n", colorize(colorBrightYellow+colorBold, "⚠"), colorize(colorBrightYellow, fmt.Sprintf("%d tool call/result part(s) would be dropped or merged", lostTools)))
+		hasLoss = true
 	}
 	if len(orig.Messages) != len(round.Messages) {
-		fmt.Printf("  ⚠ Message count changes %d → %d (consecutive same-role merges or empty messages dropped)\n", len(orig.Messages), len(round.Messages))
+		fmt.Printf("  %s %s\n", colorize(colorBrightYellow+colorBold, "⚠"), colorize(colorYellow, fmt.Sprintf("Message count changes %d → %d (consecutive same-role merges or empty messages dropped)", len(orig.Messages), len(round.Messages))))
+		hasLoss = true
 	}
-	if lostThinking == 0 && lostTools == 0 && len(orig.Messages) == len(round.Messages) {
-		fmt.Println("  ✓ No visible loss — round-trip preserves text, thinking, and tools for this chat.")
+	if !hasLoss {
+		fmt.Printf("  %s %s\n", colorize(colorBrightGreen+colorBold, "✔"), colorize(colorBrightGreen, "No visible loss — round-trip preserves text, thinking, and tools for this chat."))
 	}
 
 	if len(orig.Messages) > 0 && len(round.Messages) > 0 {
 		fmt.Println()
-		fmt.Println("Preview (first 2 messages, original → round-tripped):")
+		fmt.Println(colorize(colorDim, "Preview (first 2 messages, original → round-tripped):"))
 		n := 2
 		if len(orig.Messages) < n {
 			n = len(orig.Messages)
@@ -188,15 +213,17 @@ func printDiffHuman(orig, round *models.Conversation, from, to string) {
 			o := orig.Messages[i].StringContent()
 			r := round.Messages[i].StringContent()
 			if o == r {
-				fmt.Printf("  [%d %s] identical (%d chars)\n", i, orig.Messages[i].Role, len(o))
+				fmt.Printf("  %s [%d %s] %s (%d chars)\n", colorize(colorBrightGreen, "✔"), i, orig.Messages[i].Role, colorize(colorDim, "identical"), len(o))
 			} else {
-				fmt.Printf("  [%d %s] differs: orig %d chars → round %d chars\n", i, orig.Messages[i].Role, len(o), len(r))
+				fmt.Printf("  %s [%d %s] %s: orig %s → round %s\n", colorize(colorBrightYellow, "◐"), i, orig.Messages[i].Role, colorize(colorYellow, "differs"), colorize(colorBrightRed, fmt.Sprintf("%d chars", len(o))), colorize(colorBrightGreen, fmt.Sprintf("%d chars", len(r))))
 			}
 		}
 	}
 
 	fmt.Println()
-	fmt.Printf("Tip: run `vibeporter export --from %s --source %s --format markdown | less` to inspect the full text before migrating.\n", from, orig.ID)
+	fmt.Printf("%s run %s to inspect the full text before migrating.\n",
+		colorize(colorDim, "Tip:"),
+		colorize(colorBrightCyan+colorUnderline, fmt.Sprintf("vibeporter export --from %s --source %s --format markdown | less", from, orig.ID)))
 }
 
 func printDiffJSON(orig, round *models.Conversation) error {

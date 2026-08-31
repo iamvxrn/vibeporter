@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-	"vibeporter/internal/adapters"
 	"vibeporter/internal/models"
 )
 
@@ -116,7 +115,7 @@ func collectStats(agents []string) ([]agentStats, error) {
 
 func printStatsHuman(rows []agentStats) {
 	if len(rows) == 0 {
-		fmt.Println("No chats found for any agent.")
+		fmt.Printf("%s No chats found for any agent.\n", colorize(colorDim, "○"))
 		return
 	}
 	// totals
@@ -133,19 +132,46 @@ func printStatsHuman(rows []agentStats) {
 		total.TokensEst += r.TokensEst
 	}
 
+	fmt.Printf("%s %s\n\n", colorize(colorBrightMagenta+colorBold, "📊"), colorize(colorBold, "Agent Analytics"))
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "AGENT\tCHATS\tMSGS\tTEXT\tTHINK\tTOOLS\tCHARS\tTOKENS~")
-	for _, r := range rows {
+	_, _ = fmt.Fprintln(w, colorize(colorBrightCyan+colorBold+colorUnderline, "AGENT")+"\t"+colorize(colorBrightYellow+colorBold, "CHATS")+"\t"+colorize(colorDim, "MSGS")+"\t"+colorize(colorDim, "TEXT")+"\t"+colorize(colorDim, "THINK")+"\t"+colorize(colorBrightMagenta+colorBold, "TOOLS")+"\t"+colorize(colorDim, "CHARS")+"\t"+colorize(colorBrightGreen+colorBold, "TOKENS~"))
+	_, _ = fmt.Fprintln(w, colorize(colorDim, strings.Repeat("─", 10))+"\t"+colorize(colorDim, strings.Repeat("─", 5))+"\t"+colorize(colorDim, strings.Repeat("─", 6))+"\t"+colorize(colorDim, strings.Repeat("─", 6))+"\t"+colorize(colorDim, strings.Repeat("─", 5))+"\t"+colorize(colorDim, strings.Repeat("─", 6))+"\t"+colorize(colorDim, strings.Repeat("─", 8))+"\t"+colorize(colorDim, strings.Repeat("─", 8)))
+	for i, r := range rows {
 		tools := r.ToolCalls + r.ToolResult
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", r.Agent, r.Chats, r.Messages, r.TextParts, r.Thinking, tools, r.Chars, r.TokensEst)
+		agentDisp := colorize(agentColor(r.Agent)+colorBold, r.Agent) + " " + colorize(colorDim, agentIcon(r.Agent))
+		chatsDisp := colorize(colorBrightYellow+colorBold, fmt.Sprintf("%d", r.Chats))
+		msgsDisp := colorize(colorDim, fmt.Sprintf("%d", r.Messages))
+		if r.Messages > 1000 {
+			msgsDisp = colorize(colorBrightCyan, fmt.Sprintf("%d", r.Messages))
+		}
+		toolsDisp := colorize(colorBrightMagenta, fmt.Sprintf("%d", tools))
+		if tools > 100 {
+			toolsDisp = colorize(colorBrightMagenta+colorBold, fmt.Sprintf("%d", tools))
+		}
+		tokensDisp := colorize(colorBrightGreen+colorBold, fmt.Sprintf("%d", r.TokensEst))
+		// Alternate row dim
+		if i%2 == 1 {
+			agentDisp = colorize(colorDim, r.Agent)
+		}
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%s\t%d\t%s\n", agentDisp, chatsDisp, msgsDisp, r.TextParts, r.Thinking, toolsDisp, r.Chars, tokensDisp)
 	}
 	toolsTotal := total.ToolCalls + total.ToolResult
-	_, _ = fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", total.Agent, total.Chats, total.Messages, total.TextParts, total.Thinking, toolsTotal, total.Chars, total.TokensEst)
+	_, _ = fmt.Fprintln(w, colorize(colorDim, strings.Repeat("─", 10))+"\t"+colorize(colorDim, strings.Repeat("─", 5))+"\t"+colorize(colorDim, strings.Repeat("─", 6))+"\t"+colorize(colorDim, strings.Repeat("─", 6))+"\t"+colorize(colorDim, strings.Repeat("─", 5))+"\t"+colorize(colorDim, strings.Repeat("─", 6))+"\t"+colorize(colorDim, strings.Repeat("─", 8))+"\t"+colorize(colorDim, strings.Repeat("─", 8)))
+	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		colorize(colorBold+colorBrightCyan, "TOTAL"),
+		colorize(colorBrightYellow+colorBold, fmt.Sprintf("%d", total.Chats)),
+		colorize(colorBold, fmt.Sprintf("%d", total.Messages)),
+		colorize(colorDim, fmt.Sprintf("%d", total.TextParts)),
+		colorize(colorDim, fmt.Sprintf("%d", total.Thinking)),
+		colorize(colorBrightMagenta+colorBold, fmt.Sprintf("%d", toolsTotal)),
+		colorize(colorDim, fmt.Sprintf("%d", total.Chars)),
+		colorize(colorBrightGreen+colorBold, fmt.Sprintf("%d", total.TokensEst)),
+	)
 	_ = w.Flush()
 
-	// simple bar graph for chats distribution
+	// bar graph for chats distribution with agent colors
 	fmt.Println()
-	fmt.Println("Chats per agent:")
+	fmt.Printf("%s %s\n", colorize(colorBrightCyan+colorBold, "▇"), colorize(colorBold, "Chats per agent:"))
 	maxChats := 0
 	for _, r := range rows {
 		if r.Chats > maxChats {
@@ -156,19 +182,26 @@ func printStatsHuman(rows []agentStats) {
 		for _, r := range rows {
 			barLen := 0
 			if maxChats > 0 {
-				barLen = (r.Chats * 20) / maxChats
+				barLen = (r.Chats * 24) / maxChats
 				if r.Chats > 0 && barLen == 0 {
 					barLen = 1
 				}
 			}
 			bar := strings.Repeat("█", barLen)
-			fmt.Printf("  %-12s %4d %s\n", r.Agent, r.Chats, bar)
+			bar = colorize(agentColor(r.Agent), bar)
+			dimBar := ""
+			if barLen < 24 {
+				dimBar = colorize(colorDim, strings.Repeat("░", 24-barLen))
+			}
+			fmt.Printf("  %-12s %s %4s %s%s\n",
+				colorize(agentColor(r.Agent)+colorBold, r.Agent),
+				colorize(agentColor(r.Agent), agentIcon(r.Agent)),
+				colorize(colorBrightYellow+colorBold, fmt.Sprintf("%d", r.Chats)),
+				bar, dimBar)
 		}
 	}
 	fmt.Println()
-	fmt.Printf("Tip: vibeporter search \"query\" --agent gemini  |  vibeporter stats --json | jq\n")
-	// avoid unused import for adapters
-	_ = adapters.Clip
+	fmt.Printf("%s %s\n", colorize(colorDim, "─"), colorize(colorDim, "Tip: vibeporter search \"query\" --agent gemini  |  vibeporter stats --json | jq"))
 }
 
 func init() {

@@ -258,35 +258,53 @@ func clipSnippet(text, query string, maxLen int) string {
 
 func printSearchHuman(query string, hits []searchHit) {
 	if len(hits) == 0 {
-		fmt.Printf("No matches for %q.\n", query)
+		fmt.Printf("%s No matches for %s.\n", colorize(colorDim, "○"), colorize(colorBrightYellow+colorBold, fmt.Sprintf("%q", query)))
+		fmt.Printf("  %s\n", colorize(colorDim, "Try a broader query or check --agent filter."))
 		return
 	}
-	fmt.Printf("%d match(es) for %q\n\n", len(hits), query)
+	fmt.Printf("%s %s for %s\n\n", colorize(colorBrightMagenta+colorBold, "🔍"), colorize(colorBrightGreen+colorBold, fmt.Sprintf("%d match(es)", len(hits))), colorize(colorBrightYellow+colorBold, fmt.Sprintf("%q", query)))
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "AGENT\tTITLE\tPROJECT\tUPDATED\tMATCHES\tID")
-	for _, h := range hits {
+	_, _ = fmt.Fprintln(w, colorize(colorBrightCyan+colorBold+colorUnderline, "AGENT")+"\t"+colorize(colorDim, "TITLE")+"\t"+colorize(colorDim, "PROJECT")+"\t"+colorize(colorDim, "UPDATED")+"\t"+colorize(colorDim, "MATCHES")+"\t"+colorize(colorDim, "ID"))
+	_, _ = fmt.Fprintln(w, colorize(colorDim, strings.Repeat("─", 8))+"\t"+colorize(colorDim, strings.Repeat("─", 20))+"\t"+colorize(colorDim, strings.Repeat("─", 12))+"\t"+colorize(colorDim, strings.Repeat("─", 10))+"\t"+colorize(colorDim, strings.Repeat("─", 7))+"\t"+colorize(colorDim, strings.Repeat("─", 8)))
+	for i, h := range hits {
 		title := h.Title
 		if title == "" {
 			title = "Untitled"
 		}
 		title = adapters.Clip(strings.ReplaceAll(title, "\t", " "), 40)
+		title = highlightMatch(title, query)
+		if i%2 == 1 {
+			title = colorize(colorDim, title)
+		} else {
+			title = colorize(colorBold, title)
+		}
 		updated := ""
 		if h.UpdatedAt != "" {
 			if t, err := time.Parse(time.RFC3339, h.UpdatedAt); err == nil {
-				updated = t.Local().Format("2006-01-02")
+				updated = colorize(colorDim, t.Local().Format("2006-01-02"))
 			} else {
-				updated = h.UpdatedAt
+				updated = colorize(colorDim, h.UpdatedAt)
 			}
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\n", h.Agent, title, h.Project, updated, h.Matches, h.ID)
+		agentDisp := colorize(agentColor(h.Agent)+colorBold, h.Agent) + " " + colorize(colorDim, agentIcon(h.Agent))
+		matchesDisp := colorize(colorBrightYellow+colorBold, fmt.Sprintf("%d", h.Matches))
+		idDisp := colorize(colorCyan, h.ID)
+		projectDisp := colorize(colorDim, h.Project)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", agentDisp, title, projectDisp, updated, matchesDisp, idDisp)
 	}
 	_ = w.Flush()
 	fmt.Println()
 	for _, h := range hits {
 		if h.Snippet != "" {
-			fmt.Printf("  [%s/%s] %s\n", h.Agent, h.ID, h.Snippet)
+			snip := highlightMatch(h.Snippet, query)
+			idShort := h.ID
+			if len(idShort) > 8 {
+				idShort = idShort[:8]
+			}
+			fmt.Printf("  %s %s — %s\n", colorize(agentColor(h.Agent), "▸"), colorize(agentColor(h.Agent)+colorBold, h.Agent+"/"+idShort), colorize(colorDim, snip))
 		}
 	}
+	fmt.Printf("\n%s %s\n", colorize(colorDim, "─"), colorize(colorDim, fmt.Sprintf("%d hit(s) — use --json for scripts or --agent to filter", len(hits))))
 }
 
 func init() {

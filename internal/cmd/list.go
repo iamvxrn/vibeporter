@@ -52,40 +52,104 @@ var listCmd = &cobra.Command{
 	},
 }
 
+func agentColor(agent string) string {
+	switch agent {
+	case "claudecode":
+		return colorBrightMagenta
+	case "cursor":
+		return colorBrightCyan
+	case "opencode":
+		return colorBrightGreen
+	case "antigravity", "ag":
+		return colorBrightBlue
+	case "gemini":
+		return colorBlue
+	case "kimicode", "kimi":
+		return colorYellow
+	case "windsurf", "wind":
+		return colorCyan
+	default:
+		return colorBrightMagenta
+	}
+}
+
+func agentIcon(agent string) string {
+	switch agent {
+	case "claudecode":
+		return "🤖"
+	case "cursor":
+		return "⌨️"
+	case "opencode":
+		return "⚡"
+	case "antigravity", "ag":
+		return "🌌"
+	case "gemini":
+		return "✨"
+	case "kimicode", "kimi":
+		return "🌙"
+	case "windsurf":
+		return "🏄"
+	default:
+		return "💬"
+	}
+}
+
 func printListHuman(agent string, chats []adapters.ChatInfo, showPath bool) {
+	acolor := agentColor(agent)
+	aicon := agentIcon(agent)
 	switch len(chats) {
 	case 0:
-		fmt.Printf("No chats found for %s.\n", agent)
+		fmt.Printf("%s No chats found for %s.\n", colorize(colorDim, "○"), colorize(acolor+colorBold, agent))
 		return
 	case 1:
-		fmt.Printf("1 chat  %s\n\n", agent)
+		fmt.Printf("%s %s 1 chat  %s\n\n", colorize(acolor, aicon), colorize(colorBold, "▸"), colorize(acolor+colorBold, agent))
 	default:
-		fmt.Printf("%d chats  %s\n\n", len(chats), agent)
+		fmt.Printf("%s %s %d chats  %s\n\n", colorize(acolor, aicon), colorize(colorBold, "▸"), len(chats), colorize(acolor+colorBold, agent))
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	header := colorize(colorBrightCyan+colorBold+colorUnderline, "TITLE") + "\t" + colorize(colorDim, "PROJECT") + "\t" + colorize(colorDim, "UPDATED") + "\t" + colorize(colorDim, "ID")
 	if showPath {
-		_, _ = fmt.Fprintln(w, "TITLE\tPROJECT\tUPDATED\tID\tPATH")
-	} else {
-		_, _ = fmt.Fprintln(w, "TITLE\tPROJECT\tUPDATED\tID")
+		header += "\t" + colorize(colorDim, "PATH")
 	}
-	for _, c := range chats {
+	_, _ = fmt.Fprintln(w, header)
+	// separator
+	sep := colorize(colorDim, strings.Repeat("─", 20)) + "\t" + colorize(colorDim, strings.Repeat("─", 12)) + "\t" + colorize(colorDim, strings.Repeat("─", 12)) + "\t" + colorize(colorDim, strings.Repeat("─", 8))
+	if showPath {
+		sep += "\t" + colorize(colorDim, strings.Repeat("─", 20))
+	}
+	_, _ = fmt.Fprintln(w, sep)
+	for i, c := range chats {
 		title := c.Title
 		if title == "" {
 			title = "Untitled"
 		}
 		title = adapters.Clip(strings.ReplaceAll(title, "\t", " "), 72)
+		// Color title alternately and highlight
+		if i%2 == 0 {
+			title = colorize(colorBold, title)
+		} else {
+			title = colorize(colorDim, title)
+		}
 		updated := ""
 		if !c.UpdatedAt.IsZero() {
-			updated = c.UpdatedAt.Local().Format("2006-01-02 15:04")
+			updated = colorize(colorDim, c.UpdatedAt.Local().Format("2006-01-02 15:04"))
 		}
+		id := colorize(colorCyan, c.ID)
+		if len(c.ID) > 12 {
+			id = colorize(colorCyan, c.ID[:8]+colorize(colorDim, c.ID[8:12]))
+		}
+		project := colorize(colorDim, c.Project)
 		if showPath {
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", title, c.Project, updated, c.ID, c.Path)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", title, project, updated, id, colorize(colorDim, c.Path))
 		} else {
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", title, c.Project, updated, c.ID)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", title, project, updated, id)
 		}
 	}
 	_ = w.Flush()
+	if len(chats) > 0 {
+		fmt.Printf("\n%s %s\n", colorize(colorDim, "─"), colorize(colorDim, fmt.Sprintf("%d chat(s) — %s %s", len(chats), aicon, agent)))
+	}
 }
 
 func writeListJSON(chats []adapters.ChatInfo) error {
