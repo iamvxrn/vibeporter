@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -242,12 +243,13 @@ func clip(text, query string, maxLen int) string {
 	if text == "" {
 		return ""
 	}
-	lower := strings.ToLower(text)
-	ql := strings.ToLower(query)
-	idx := strings.Index(lower, ql)
+	runes := []rune(text)
+	lower := []rune(strings.ToLower(text))
+	ql := []rune(strings.ToLower(query))
+	idx := runeIndex(lower, ql)
 	if idx < 0 {
-		if len(text) > maxLen {
-			return text[:maxLen] + "…"
+		if len(runes) > maxLen {
+			return string(runes[:maxLen]) + "…"
 		}
 		return text
 	}
@@ -256,21 +258,74 @@ func clip(text, query string, maxLen int) string {
 		start = 0
 	}
 	end := start + maxLen
-	if end > len(text) {
-		end = len(text)
+	if end > len(runes) {
+		end = len(runes)
 		start = end - maxLen
 		if start < 0 {
 			start = 0
 		}
 	}
-	snip := strings.TrimSpace(text[start:end])
+	snip := strings.TrimSpace(string(runes[start:end]))
 	if start > 0 {
 		snip = "…" + snip
 	}
-	if end < len(text) {
+	if end < len(runes) {
 		snip = snip + "…"
 	}
 	return snip
+}
+
+func runeIndex(text, query []rune) int {
+	if len(query) == 0 {
+		return -1
+	}
+	for i := 0; i+len(query) <= len(text); i++ {
+		if reflect.DeepEqual(text[i:i+len(query)], query) {
+			return i
+		}
+	}
+	return -1
+}
+
+type partMismatch struct {
+	Index int          `json:"index"`
+	From  *models.Part `json:"from,omitempty"`
+	To    *models.Part `json:"to,omitempty"`
+}
+
+type partsDiff struct {
+	Equal      bool           `json:"equal"`
+	Mismatches []partMismatch `json:"mismatches,omitempty"`
+}
+
+func compareParts(from, to *models.Conversation) partsDiff {
+	var fromParts, toParts []models.Part
+	if from != nil {
+		for _, msg := range from.Messages {
+			fromParts = append(fromParts, msg.EffectiveParts()...)
+		}
+	}
+	if to != nil {
+		for _, msg := range to.Messages {
+			toParts = append(toParts, msg.EffectiveParts()...)
+		}
+	}
+	result := partsDiff{Equal: len(fromParts) == len(toParts)}
+	for i := 0; i < len(fromParts) || i < len(toParts); i++ {
+		if i < len(fromParts) && i < len(toParts) && reflect.DeepEqual(fromParts[i], toParts[i]) {
+			continue
+		}
+		result.Equal = false
+		mismatch := partMismatch{Index: i}
+		if i < len(fromParts) {
+			mismatch.From = &fromParts[i]
+		}
+		if i < len(toParts) {
+			mismatch.To = &toParts[i]
+		}
+		result.Mismatches = append(result.Mismatches, mismatch)
+	}
+	return result
 }
 
 func handleDiff(w http.ResponseWriter, r *http.Request) {
@@ -359,6 +414,7 @@ func handleDiff(w http.ResponseWriter, r *http.Request) {
 		"round":     round,
 		"fromAgent": from,
 		"toAgent":   to,
+		"parts":     compareParts(orig, round),
 	})
 }
 

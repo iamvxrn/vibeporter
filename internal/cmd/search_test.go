@@ -24,6 +24,10 @@ func TestClipSnippet(t *testing.T) {
 	if snip2 != "short text" {
 		t.Fatalf("no match %q", snip2)
 	}
+	unicode := clipSnippet("начало 💥 середина needle конец", "needle", 15)
+	if !strings.Contains(unicode, "needle") || strings.Contains(unicode, "�") {
+		t.Fatalf("invalid UTF-8 clipping: %q", unicode)
+	}
 }
 
 func TestMatchConversation(t *testing.T) {

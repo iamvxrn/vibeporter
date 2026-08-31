@@ -19,13 +19,18 @@ async function loadStats(){
   try{
     const rows = await fetchJSON('/api/stats');
     const bar = document.getElementById('statsBar');
-    bar.innerHTML = rows.map(r=>`<span><b>${r.agent}</b> ${r.chats} chats · ${r.messages} msgs · ~${r.tokens_est} tokens</span>`).join('');
+    bar.replaceChildren(...rows.map(r=>{
+      const span = el('span');
+      const agent = el('b', null, r.agent);
+      span.append(agent, document.createTextNode(` ${r.chats} chats · ${r.messages} msgs · ~${r.tokens_est} tokens`));
+      return span;
+    }));
   }catch{}
 }
 
 function renderAgentTabs(){
   const c = document.getElementById('agentTabs');
-  c.innerHTML = '';
+  c.replaceChildren();
   const allBtn = el('button', activeAgent==='all'?'active':'', 'all');
   allBtn.onclick = ()=>{activeAgent='all'; renderAgentTabs(); filterAndRender();};
   c.appendChild(allBtn);
@@ -37,7 +42,7 @@ function renderAgentTabs(){
   const fromSel = document.getElementById('fromSel');
   const toSel = document.getElementById('toSel');
   [fromSel,toSel].forEach(sel=>{
-    sel.innerHTML = '';
+    sel.replaceChildren();
     for(const ag of agents){
       const o = document.createElement('option');
       o.value = ag; o.textContent = ag;
@@ -66,7 +71,7 @@ function filterAndRender(){
 
 function renderChatList(){
   const list = document.getElementById('chatList');
-  list.innerHTML = '';
+  list.replaceChildren();
   for(const c of filtered.slice(0,100)){
     const div = el('div','chat');
     if(selected && selected.ID===c.ID) div.classList.add('active');
@@ -87,10 +92,10 @@ async function selectChat(c){
   renderChatList();
   document.getElementById('previewHeader').textContent = `${c.Agent} · ${c.Title} · ${c.ID}`;
   const preview = document.getElementById('preview');
-  preview.innerHTML = 'loading…';
+  preview.textContent = 'loading…';
   try{
     const conv = await fetchJSON(`/api/conversation?agent=${encodeURIComponent(c.Agent)}&id=${encodeURIComponent(c.ID)}`);
-    preview.innerHTML = '';
+    preview.replaceChildren();
     for(const m of conv.messages){
       const div = el('div','msg '+m.role);
       const role = el('div','muted', m.role);
@@ -128,7 +133,14 @@ async function doSearch(){
   filtered = chats;
   renderChatList();
   const preview = document.getElementById('preview');
-  preview.innerHTML = `<b>${res.length} hits for "${q}"</b>` + res.map(h=>`<div class="msg"><b>${h.agent}/${h.id}</b> — ${h.snippet} <small>matches ${h.matches}</small></div>`).join('');
+  preview.replaceChildren();
+  preview.appendChild(el('b', null, `${res.length} hits for "${q}"`));
+  for(const h of res){
+    const msg = el('div', 'msg');
+    const heading = el('b', null, `${h.agent}/${h.id}`);
+    msg.append(heading, document.createTextNode(` — ${h.snippet} `), el('small', null, `matches ${h.matches}`));
+    preview.appendChild(msg);
+  }
 }
 
 async function doDiff(){
@@ -141,7 +153,15 @@ async function doDiff(){
   try{
     const r = await fetchJSON(`/api/diff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&source=${encodeURIComponent(selected.ID)}`);
     const o = r.from.counts, n = r.to.counts;
-    panel.innerHTML = `<b>Diff ${from} → ${to}</b><br>messages ${o.messages} → ${n.messages} · text ${o.text}→${n.text} · thinking ${o.thinking}→${n.thinking} · tool_call ${o.tool_call}→${n.tool_call}<br><small>Tip: check preview before migrate</small>`;
+    panel.replaceChildren();
+    panel.appendChild(el('b', null, `Diff ${from} → ${to}`));
+    panel.appendChild(document.createElement('br'));
+    panel.appendChild(document.createTextNode(`messages ${o.messages} → ${n.messages} · text ${o.text}→${n.text} · thinking ${o.thinking}→${n.thinking} · tool_call ${o.tool_call}→${n.tool_call} · tool_result ${o.tool_result}→${n.tool_result}`));
+    panel.appendChild(document.createElement('br'));
+    const parts = r.parts;
+    panel.appendChild(el('span', null, parts && parts.equal ? 'Parts: identical' : `Parts: ${parts ? parts.mismatches.length : 'not compared'} difference(s)`));
+    panel.appendChild(document.createElement('br'));
+    panel.appendChild(el('small', null, 'Tip: check preview before migrate'));
   }catch(e){ panel.textContent='diff failed: '+e.message; }
 }
 

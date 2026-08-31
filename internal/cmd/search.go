@@ -222,12 +222,13 @@ func clipSnippet(text, query string, maxLen int) string {
 	if text == "" {
 		return ""
 	}
-	lower := strings.ToLower(text)
-	qLower := strings.ToLower(query)
-	idx := strings.Index(lower, qLower)
+	runes := []rune(text)
+	lower := []rune(strings.ToLower(text))
+	qLower := []rune(strings.ToLower(query))
+	idx := runeIndex(lower, qLower)
 	if idx < 0 {
-		if len(text) > maxLen {
-			return adapters.Clip(text, maxLen)
+		if len(runes) > maxLen {
+			return adapters.Clip(string(runes), maxLen)
 		}
 		return text
 	}
@@ -237,23 +238,35 @@ func clipSnippet(text, query string, maxLen int) string {
 		start = 0
 	}
 	end := start + maxLen
-	if end > len(text) {
-		end = len(text)
+	if end > len(runes) {
+		end = len(runes)
 		start = end - maxLen
 		if start < 0 {
 			start = 0
 		}
 	}
-	snip := strings.TrimSpace(text[start:end])
+	snip := strings.TrimSpace(string(runes[start:end]))
 	if start > 0 {
 		snip = "…" + snip
 	}
-	if end < len(text) {
+	if end < len(runes) {
 		snip = snip + "…"
 	}
 	// highlight query case-insensitively by uppercasing matched slice (simple)
 	// Keep original casing but ensure snippet readable
 	return snip
+}
+
+func runeIndex(text, query []rune) int {
+	if len(query) == 0 {
+		return -1
+	}
+	for i := 0; i+len(query) <= len(text); i++ {
+		if string(text[i:i+len(query)]) == string(query) {
+			return i
+		}
+	}
+	return -1
 }
 
 func printSearchHuman(query string, hits []searchHit) {

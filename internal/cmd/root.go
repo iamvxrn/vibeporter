@@ -10,7 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "vibeporter",
 	Short:   "Migrate chat histories and configs between AI coding agents",
-	Version: "0.4.1",
+	Version: "0.4.2",
 }
 
 func Execute() {

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-31
+
+- **Security** — escape chat content in HTML exports and render Web UI content through safe DOM text nodes to prevent XSS.
+- Search snippets preserve UTF-8 text; diff now compares structured parts, including tool calls and results.
+
 ## [0.4.1] - 2026-08-30
 
 - Vibrant CLI: `list`/`search`/`stats`/`diff` with agent colors/icons, `HighlightMatch`, bright palette (`internal/cmd/color.go`, `list.go`, `search.go`, `stats.go`, `diff.go`)
