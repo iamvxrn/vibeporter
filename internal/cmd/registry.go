@@ -9,6 +9,7 @@ import (
 	"vibeporter/internal/adapters/gemini"
 	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/opencode"
+	"vibeporter/internal/adapters/windsurf"
 )
 
 var extractors = map[string]adapters.Extractor{
@@ -22,6 +23,8 @@ var extractors = map[string]adapters.Extractor{
 	"dsh":         dsh.NewAdapter(),
 	"dhs":         dsh.NewAdapter(),
 	"cursor":      cursor.NewAdapter(),
+	"windsurf":    windsurf.NewAdapter(),
+	"wind":        windsurf.NewAdapter(),
 }
 
 var injectors = map[string]adapters.Injector{
@@ -35,7 +38,9 @@ var injectors = map[string]adapters.Injector{
 	"dsh":         dsh.NewAdapter(),
 	"dhs":         dsh.NewAdapter(),
 	"cursor":      cursor.NewAdapter(),
+	"windsurf":    windsurf.NewAdapter(),
+	"wind":        windsurf.NewAdapter(),
 }
 
-const supportedExtractors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor"
-const supportedInjectors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor"
+const supportedExtractors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor, windsurf (wind)"
+const supportedInjectors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor, windsurf (wind)"

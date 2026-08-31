@@ -13,6 +13,7 @@ import (
 	"vibeporter/internal/adapters/gemini"
 	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/opencode"
+	"vibeporter/internal/adapters/windsurf"
 	"vibeporter/internal/models"
 )
 
@@ -91,6 +92,12 @@ func TestFidelityRoundTripPerAdapter(t *testing.T) {
 		} {
 			return kimicode.NewAdapter()
 		}, false, "KIMI"},
+		{"windsurf", func() interface {
+			Inject(*models.Conversation, string) (string, error)
+			Extract(string) (*models.Conversation, error)
+		} {
+			return windsurf.NewAdapter()
+		}, false, "WINDSURF"},
 	}
 
 	syn := syntheticConversation()
@@ -110,6 +117,9 @@ func TestFidelityRoundTripPerAdapter(t *testing.T) {
 			case "KIMI":
 				tmpKimi := t.TempDir()
 				t.Setenv("KIMI_CODE_HOME", tmpKimi)
+			case "WINDSURF":
+				tmpWindsurf := t.TempDir()
+				t.Setenv("WINDSURF_DATA_DIR", tmpWindsurf)
 			}
 			adapter := tc.ctor()
 			var target string

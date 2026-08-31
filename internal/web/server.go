@@ -18,6 +18,7 @@ import (
 	"vibeporter/internal/adapters/gemini"
 	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/opencode"
+	"vibeporter/internal/adapters/windsurf"
 	"vibeporter/internal/models"
 )
 
@@ -38,6 +39,8 @@ var extractors = map[string]adapters.Extractor{
 	"kimicode":    kimicode.NewAdapter(),
 	"kimi":        kimicode.NewAdapter(),
 	"cursor":      cursor.NewAdapter(),
+	"windsurf":    windsurf.NewAdapter(),
+	"wind":        windsurf.NewAdapter(),
 }
 
 var injectors = map[string]adapters.Injector{
@@ -49,6 +52,8 @@ var injectors = map[string]adapters.Injector{
 	"kimicode":    kimicode.NewAdapter(),
 	"kimi":        kimicode.NewAdapter(),
 	"cursor":      cursor.NewAdapter(),
+	"windsurf":    windsurf.NewAdapter(),
+	"wind":        windsurf.NewAdapter(),
 }
 
 func Serve(addr string) error {
@@ -78,7 +83,7 @@ func withCORS(h http.Handler) http.Handler {
 }
 
 func handleAgents(w http.ResponseWriter, r *http.Request) {
-	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini"}
+	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"}
 	writeJSON(w, agents)
 }
 
@@ -87,7 +92,7 @@ func handleChats(w http.ResponseWriter, r *http.Request) {
 	if agent == "" {
 		// all
 		var all []adapters.ChatInfo
-		for _, ag := range []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini"} {
+		for _, ag := range []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"} {
 			ext, ok := extractors[ag]
 			if !ok {
 				continue
@@ -357,7 +362,7 @@ func handleDiff(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStats(w http.ResponseWriter, r *http.Request) {
-	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini"}
+	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"}
 	var rows []map[string]interface{}
 	for _, ag := range agents {
 		ext, ok := extractors[ag]
