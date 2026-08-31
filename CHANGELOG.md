@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-30
+
+- Vibrant CLI: `list`/`search`/`stats`/`diff` with agent colors/icons, `HighlightMatch`, bright palette (`internal/cmd/color.go`, `list.go`, `search.go`, `stats.go`, `diff.go`)
+- Web muted palette: `internal/web/static/style.css` monochrome `#0f0f0f`, remove purple gradients (fix `gofmt` and `staticcheck QF1003` for `fidelity_test.go`)
+- Lint: `gofmt` for `fidelity_test.go` imports/structs and `server.go` alignment, `golangci-lint` clean
+
 ## [0.4.0] - 2026-08-30
 
 The search + stats + hub release.
