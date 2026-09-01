@@ -1,4 +1,4 @@
-// Package compact reduces conversations locally using a heuristic token estimate.
+// Package compact selects conversation context locally using a heuristic token estimate.
 package compact
 
 import (

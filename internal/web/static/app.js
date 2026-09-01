@@ -97,7 +97,7 @@ async function runHandoff(create){
 function openHandoff(){
   if(!selected){ document.getElementById('handoffStatus').textContent='Select a chat first.'; return; }
   document.getElementById('handoffSource').textContent=`${selected.Agent} · ${selected.Title || 'Untitled'} · ${selected.ID}`;
-  document.getElementById('handoffPreview').textContent='Choose a budget, then use Dry run to preview the compacted context.';
+  document.getElementById('handoffPreview').textContent='Choose a budget, then use Dry run to preview the selected context.';
   document.getElementById('handoffModal').classList.remove('hidden');
 }
 
