@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="website/docs/public/social.png" alt="vibeporter — Migrate chats between agents" width="720">
+  <img src="website/docs/public/social.png" alt="vibeporter — local context handoff between agents" width="720">
 </p>
 
 # Vibeporter
 
-Local context handoff for AI coding agents. Compact a long chat into a new native session in another agent while retaining the task, decisions, current status, and next steps.
+Local context handoff for AI coding agents. Select useful context from a long chat for a new native session in another agent while retaining the task, decisions, current status, and next steps.
 
 [![Documentation](https://img.shields.io/badge/docs-vibeporter.pages.dev-8b5cf6.svg)](https://vibeporter.pages.dev)
 [![OS Matrix](https://img.shields.io/badge/OS-Linux%20%7C%20macOS%20%7C%20Windows-8b5cf6.svg)](#)
 
 ## Features
 
-- Creates compact context handoffs locally; no cloud, accounts, telemetry, or background service.
+- Creates budgeted context handoffs locally; no cloud, accounts, telemetry, or background service.
 - Converts chat histories from JSONL or SQLite into a standard format.
 - Supports Claude Code, OpenCode, Gemini CLI, Antigravity, Kimi Code, DeepSeek Harness, and Cursor (read and write).
 - Copies configuration files (e.g., `CLAUDE.md` to `GEMINI.md`).

@@ -18,7 +18,7 @@ Prints a table of **title**, **project**, **updated**, and **id** (newest first)
 
 ## `handoff`
 
-Create a fresh native target session from compacted local context. It never overwrites the source chat and uses no cloud service or LLM.
+Create a fresh native target session from locally selected context. It never overwrites the source chat and uses no cloud service or LLM.
 
 ```bash
 vibeporter handoff --from claudecode --source abc123 --to opencode --compact 200k

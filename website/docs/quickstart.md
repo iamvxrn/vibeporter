@@ -1,6 +1,6 @@
 # Quickstart
 
-Move a conversation between agents in three steps.
+Hand off useful context to another agent in three steps.
 
 ## 1. Discover your chats
 
@@ -17,23 +17,24 @@ vibeporter list cursor
 
 Each row is a title, project directory, last update, and id (newest first). Use `--json` if you need the file path.
 
-## 2. Migrate a conversation
+## 2. Create a context handoff
 
-Pick a source chat by its id (from `list`). Omit `--target` to write into the destination agent's own store:
+Pick a source chat by its id (from `list`). Choose a context budget; omit `--target` to write into the destination agent's own store:
 
 ```bash
-vibeporter migrate \
+vibeporter handoff \
   --from claudecode \
-  --to gemini \
-  --source 203f4afc-2fd1-40e9-be7b-fc26d8fc0759
+  --to opencode \
+  --source 203f4afc-2fd1-40e9-be7b-fc26d8fc0759 \
+  --compact 200k
 
-vibeporter migrate --from gemini --to cursor --source <id>
+vibeporter handoff --from gemini --to cursor --source <id> --compact 100k --strategy recent --dry-run
 ```
 
 Behind the scenes, Vibeporter:
 1. Parses the source agent's storage format (JSONL, SQLite).
-2. Converts the messages into a common intermediate representation.
-3. Serializes that into the target agent's format.
+2. Selects local context to the requested token budget using `smart` or `recent`.
+3. Adds provenance and serializes a new session into the target agent's format.
 
 ## 3. Port your project configs
 

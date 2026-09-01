@@ -1,6 +1,6 @@
-# Vibeporter: port your AI conversations
+# Vibeporter: local context handoff
 
-vibeporter is a single Go CLI for migrating chat histories and workspace configurations between AI coding agents — built for terminals, scripts, and the open-source community. Your conversations belong to you: move them freely between Claude Code, OpenCode, Gemini CLI, and more.
+vibeporter is a single Go CLI for handing off long AI conversations into fresh native sessions. It selects useful local context to a budget, retains task intent and recent progress, and writes to another agent without cloud services or external accounts.
 
 <div style="display: flex; gap: 12px; margin-top: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
   <a href="/quickstart" style="background-color: var(--vp-button-brand-bg); color: var(--vp-button-brand-text); padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background-color 0.2s;">Quickstart</a>
@@ -34,9 +34,9 @@ After you install Vibeporter, everything is a one-liner.
 # List all your Claude Code conversations
 vibeporter list claudecode
 
-# Migrate a chat from Claude Code to Gemini CLI
-vibeporter migrate --from claudecode --to gemini \
-  --source <chat-id-from-list>
+# Hand off a compact context to OpenCode
+vibeporter handoff --from claudecode --to opencode \
+  --source <chat-id-from-list> --compact 200k
 
 # Port your project configs (CLAUDE.md → GEMINI.md)
 vibeporter port-config --from claudecode --to gemini --dir .
