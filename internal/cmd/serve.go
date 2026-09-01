@@ -30,9 +30,9 @@ var serveCmd = &cobra.Command{
 			addr = "127.0.0.1:" + addr
 		}
 		if !strings.HasPrefix(addr, "127.0.0.1:") && !strings.HasPrefix(addr, "localhost:") {
-			fmt.Fprintf(cmd.ErrOrStderr(), "WARNING: serving chat data on %s. Anyone who can reach this address can access the local API.\n", addr)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARNING: serving chat data on %s. Anyone who can reach this address can access the local API.\n", addr)
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Starting local-only vibeporter web at http://%s\n", addr)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Starting local-only vibeporter web at http://%s\n", addr)
 		return web.Serve(addr)
 	},
 }

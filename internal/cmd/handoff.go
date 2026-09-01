@@ -49,10 +49,10 @@ var handoffCmd = &cobra.Command{
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
 		}
 		if handoffDryRun {
-			fmt.Fprintf(cmd.OutOrStdout(), "Dry run: %s -> %s, tokens~ %d -> %d (budget %d)\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.Budget)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Dry run: %s -> %s, tokens~ %d -> %d (budget %d)\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.Budget)
 			return nil
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Created handoff %s -> %s: tokens~ %d -> %d\nWrote %s\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.TargetPath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created handoff %s -> %s: tokens~ %d -> %d\nWrote %s\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.TargetPath)
 		return nil
 	},
 }
