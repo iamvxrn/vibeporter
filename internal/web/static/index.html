@@ -3,24 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>vibeporter — migrate chats between AI agents</title>
+<title>vibeporter — local context handoff</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="nav">
   <div class="nav-inner">
-    <div class="brand">vibeporter <span>web</span> <small>prototype</small></div>
+    <div class="brand">vibeporter <span>web</span> <small>Local only</small></div>
     <nav><a href="#app">App</a><a href="https://vibeporter.pages.dev" target="_blank">Docs</a></nav>
   </div>
 </header>
 
 <section class="hero">
   <div class="hero-inner">
-    <h1>Migrate chats between <span>any</span> AI agents</h1>
-    <p>Claude Code · Cursor · OpenCode · Antigravity · Kimi · Gemini — one hub for all your AI chats. Search, diff, and migrate with a click.</p>
+    <h1>Hand off context between <span>local</span> AI agents</h1>
+    <p>Compact long chats into a fresh native session while retaining task context, current status, and next steps. All chat data stays on this device.</p>
     <div class="hero-actions">
       <a href="#app" class="btn primary">Open hub →</a>
-      <code>vibeporter search "fix database bug"</code>
+      <code>vibeporter handoff --from claudecode --to opencode --compact 200k</code>
     </div>
     <div id="statsBar" class="stats-bar">loading stats…</div>
   </div>
@@ -33,7 +34,7 @@
       <button id="searchBtn">Search</button>
     </div>
     <div class="agent-tabs" id="agentTabs"></div>
-    <div class="muted" style="padding:8px 12px;font-size:12px">Drag a chat to another agent to migrate (or use buttons). Click to preview.</div>
+    <div class="muted" style="padding:8px 12px;font-size:12px">Select a chat to review its context and create a handoff.</div>
     <div id="chatList" class="chat-list"></div>
   </aside>
   <main class="main">
@@ -42,20 +43,32 @@
     <div id="diffPanel" class="diff-panel hidden"></div>
   </main>
   <aside class="inspector">
-    <h3>Migrate</h3>
+    <h3>Context Handoff</h3>
     <label>From <select id="fromSel"></select></label>
     <label>To <select id="toSel"></select></label>
-    <button id="diffBtn" class="btn">Diff</button>
-    <button id="migrateBtn" class="btn primary">Migrate →</button>
-    <div id="migrateStatus" class="muted"></div>
+    <button id="handoffBtn" class="btn primary">Handoff</button>
+    <div id="handoffStatus" class="muted" role="status"></div>
     <hr>
-    <h4>Tip</h4>
-    <p class="muted">CLI: <code>vibeporter migrate --from X --to Y --source &lt;id&gt;</code></p>
-    <p class="muted">All data stays local. No cloud.</p>
+    <h4>Advanced</h4>
+    <button id="diffBtn" class="btn">Compare raw migration</button>
+    <button id="migrateBtn" class="btn">Migrate without compacting</button>
+    <div id="migrateStatus" class="muted"></div>
+    <p class="muted">All chat data stays on this device. No cloud.</p>
   </aside>
 </section>
 
-<footer class="footer">Prototype — <code>vibeporter serve</code> on <span id="addr"></span> · <a href="https://github.com/iamvxrn/vibeporter">GitHub</a></footer>
+<div id="handoffModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="handoffTitle">
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="handoffTitle">Create handoff</h2><button id="closeHandoff" class="btn">Close</button></div>
+    <p id="handoffSource" class="muted"></p>
+    <label>Target <select id="handoffTo"></select></label>
+    <fieldset><legend>Context budget</legend><div id="budgetChoices" class="choices"></div></fieldset>
+    <fieldset><legend>Strategy</legend><label><input type="radio" name="strategy" value="smart" checked> Smart <span class="muted">Keeps initial intent and recent useful context.</span></label><label><input type="radio" name="strategy" value="recent"> Recent <span class="muted">Keeps the newest valid context.</span></label></fieldset>
+    <div id="handoffPreview" class="result muted">Choose a budget to preview tokens~.</div>
+    <div class="modal-actions"><button id="previewHandoff" class="btn">Dry run</button><button id="createHandoff" class="btn primary">Create handoff</button></div>
+  </div>
+</div>
+<footer class="footer">Local only · <code>vibeporter serve</code> on <span id="addr"></span> · <a href="https://github.com/iamvxrn/vibeporter">GitHub</a></footer>
 <script src="app.js"></script>
 </body>
 </html>

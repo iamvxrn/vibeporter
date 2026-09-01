@@ -14,7 +14,25 @@ vibeporter list <agent> --paths
 
 Prints a table of **title**, **project**, **updated**, and **id** (newest first). Titles come from the agent's own name when it has one (Claude `ai-title`, OpenCode `session.title`), otherwise from the first user message.
 
-`--json` is for scripts (includes the on-disk path). `--paths` adds that column to the table. `migrate --source` accepts the id from this list.
+`--json` is for scripts (includes the on-disk path). `--paths` adds that column to the table. `migrate` and `handoff` accept the id from this list.
+
+## `handoff`
+
+Create a fresh native target session from compacted local context. It never overwrites the source chat and uses no cloud service or LLM.
+
+```bash
+vibeporter handoff --from claudecode --source abc123 --to opencode --compact 200k
+vibeporter handoff --from cursor --source /path/to/chat --to gemini --compact 100k --strategy recent --dry-run
+```
+
+`--compact` is required and accepts `50k`, `100k`, `200k`, or a positive integer token budget. Token counts are heuristic and are displayed as `tokens~`.
+
+- `--strategy smart` (default) retains the system prompt, early user intent when possible, and useful recent context while dropping heavy noise.
+- `--strategy recent` keeps the newest valid context and preserves message ordering.
+- `--dry-run` reports the projected handoff without writing a target session.
+- `--json` writes the structured handoff report without human output.
+
+Each created handoff has a provenance header and a metadata-only local manifest under `~/.vibeporter/handoffs/`.
 
 ## `migrate`
 
@@ -30,6 +48,14 @@ vibeporter migrate --from <agent> --to <agent> --source <id> --target /tmp/out.j
 - `--to` — Target agent name
 - `--source` — Chat id from `list`, or a file path
 - `--target` — Optional. When omitted, writes into the target agent's native store.
+
+## `serve`
+
+```bash
+vibeporter serve
+```
+
+Starts the local-only web app. Select a chat, choose **Handoff**, set a compact budget and strategy, run a dry preview, then create a native target session. All chat data stays on your device.
 
 ## `search`
 

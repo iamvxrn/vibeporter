@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [0.5.0] — Context Handoff - 2026-09-02
+
+- `handoff` selects local chat context to a token budget and creates fresh native target sessions with `smart` or `recent` strategies.
+- `migrate --exclude-last N` omits the last N messages before porting a chat.
+- Local handoff manifests, provenance headers, dry-run and JSON reports.
+- `serve` makes Context Handoff the primary local-only workflow with preview and result states.
 
 ## [0.4.2] - 2026-08-31
 

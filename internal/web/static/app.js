@@ -1,6 +1,7 @@
 let chats = [], filtered = [], selected = null;
 let agents = ["claudecode","cursor","opencode","antigravity","kimicode","gemini","windsurf"];
 let activeAgent = "all";
+let handoffBudget = '200k';
 
 async function fetchJSON(url){
   const r = await fetch(url);
@@ -50,6 +51,54 @@ function renderAgentTabs(){
     }
   });
   fromSel.value = 'cursor'; toSel.value = 'opencode';
+  const handoffTo = document.getElementById('handoffTo');
+  handoffTo.replaceChildren();
+  for(const ag of agents){ const o = el('option', null, ag); o.value = ag; handoffTo.appendChild(o); }
+  handoffTo.value = 'opencode';
+  const budgets = document.getElementById('budgetChoices');
+  budgets.replaceChildren();
+  for(const budget of ['50k','100k','200k','Full']){
+    const button = el('button', budget===handoffBudget?'active':'', budget);
+    button.type = 'button'; button.onclick = ()=>{ handoffBudget=budget; renderAgentTabs(); };
+    budgets.appendChild(button);
+  }
+}
+
+function handoffBody(){
+  return {from:selected.Agent, to:document.getElementById('handoffTo').value, source:selected.ID, compact:handoffBudget==='Full'?'1000000000':handoffBudget, strategy:document.querySelector('input[name="strategy"]:checked').value};
+}
+
+function renderHandoffResult(result, created){
+  const box = document.getElementById('handoffPreview');
+  box.replaceChildren();
+  box.appendChild(el('b', null, created ? 'Handoff created' : 'Dry run'));
+  box.appendChild(document.createElement('br'));
+  box.appendChild(document.createTextNode(`${result.source_agent} → ${result.target_agent} · tokens~ ${result.original_tokens_estimate} → ${result.transferred_tokens_estimate} · budget ${result.budget_tokens}`));
+  if(created && result.target_path){
+    box.appendChild(document.createElement('br'));
+    const copy = el('button', 'btn', 'Copy path');
+    copy.onclick = ()=>navigator.clipboard.writeText(result.target_path);
+    box.append(document.createTextNode(result.target_path+' '), copy);
+  }
+}
+
+async function runHandoff(create){
+  if(!selected) return;
+  const box = document.getElementById('handoffPreview');
+  box.textContent = create ? 'creating handoff…' : 'previewing…';
+  try{
+    const r = await fetch(create?'/api/handoff':'/api/handoff/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(handoffBody())});
+    const data = await r.json(); if(!r.ok) throw new Error(data.error || r.statusText);
+    renderHandoffResult(data, create);
+    if(create){ document.getElementById('handoffStatus').textContent=`Created ${data.source_agent} → ${data.target_agent}: ${data.target_path}`; await loadChats(); }
+  }catch(e){ box.textContent = `handoff failed: ${e.message}`; }
+}
+
+function openHandoff(){
+  if(!selected){ document.getElementById('handoffStatus').textContent='Select a chat first.'; return; }
+  document.getElementById('handoffSource').textContent=`${selected.Agent} · ${selected.Title || 'Untitled'} · ${selected.ID}`;
+  document.getElementById('handoffPreview').textContent='Choose a budget, then use Dry run to preview the compacted context.';
+  document.getElementById('handoffModal').classList.remove('hidden');
 }
 
 async function loadChats(){
@@ -192,6 +241,10 @@ document.getElementById('searchBtn').onclick = doSearch;
 document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
 document.getElementById('diffBtn').onclick = doDiff;
 document.getElementById('migrateBtn').onclick = doMigrate;
+document.getElementById('handoffBtn').onclick = openHandoff;
+document.getElementById('closeHandoff').onclick = ()=>document.getElementById('handoffModal').classList.add('hidden');
+document.getElementById('previewHandoff').onclick = ()=>runHandoff(false);
+document.getElementById('createHandoff').onclick = ()=>runHandoff(true);
 
 document.getElementById('addr').textContent = location.host;
 loadStats();

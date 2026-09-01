@@ -16,6 +16,7 @@ var (
 	targetPath   string
 	migrateTitle string
 	migrateCwd   string
+	excludeLast  int
 )
 
 var migrateCmd = &cobra.Command{
@@ -41,6 +42,10 @@ var migrateCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("extracting: %w", err)
 		}
+		if excludeLast < 0 {
+			return fmt.Errorf("--exclude-last must be non-negative")
+		}
+		excludeLastMessages(conv, excludeLast)
 		applyMigrateOverrides(conv)
 
 		out := strings.TrimSpace(targetPath)
@@ -65,6 +70,17 @@ var migrateCmd = &cobra.Command{
 	},
 }
 
+func excludeLastMessages(conv *models.Conversation, count int) {
+	if conv == nil || count <= 0 {
+		return
+	}
+	if count >= len(conv.Messages) {
+		conv.Messages = nil
+		return
+	}
+	conv.Messages = conv.Messages[:len(conv.Messages)-count]
+}
+
 func applyMigrateOverrides(conv *models.Conversation) {
 	if conv == nil {
 		return
@@ -84,6 +100,7 @@ func init() {
 	migrateCmd.Flags().StringVar(&targetPath, "target", "", "Optional output path (defaults to the target agent's native store)")
 	migrateCmd.Flags().StringVar(&migrateTitle, "title", "", "Override the conversation title on the target")
 	migrateCmd.Flags().StringVar(&migrateCwd, "cwd", "", "Override the workspace directory stored on the target session")
+	migrateCmd.Flags().IntVar(&excludeLast, "exclude-last", 0, "Exclude the last N messages before migration")
 
 	_ = migrateCmd.MarkFlagRequired("from")
 	_ = migrateCmd.MarkFlagRequired("to")

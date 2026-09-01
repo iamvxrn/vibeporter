@@ -55,6 +55,20 @@ func TestApplyMigrateOverrides(t *testing.T) {
 	}
 }
 
+func TestExcludeLastMessages(t *testing.T) {
+	conv := &models.Conversation{Messages: []models.Message{
+		{Content: "one"}, {Content: "two"}, {Content: "three"},
+	}}
+	excludeLastMessages(conv, 1)
+	if len(conv.Messages) != 2 || conv.Messages[1].Content != "two" {
+		t.Fatalf("excluded messages: %+v", conv.Messages)
+	}
+	excludeLastMessages(conv, 10)
+	if len(conv.Messages) != 0 {
+		t.Fatalf("expected empty conversation, got %d messages", len(conv.Messages))
+	}
+}
+
 func TestMigrateUnknownAgents(t *testing.T) {
 	t.Cleanup(resetMigrateFlags)
 	fromAgent, toAgent, sourcePath, targetPath = "nope", "gemini", "x", ""
@@ -219,6 +233,7 @@ func (errExtractor) ListConversations() ([]adapters.ChatInfo, error) {
 func resetMigrateFlags() {
 	fromAgent, toAgent, sourcePath, targetPath, portDir = "", "", "", "", ""
 	migrateTitle, migrateCwd = "", ""
+	excludeLast = 0
 }
 
 func captureStdout(t *testing.T, fn func()) string {

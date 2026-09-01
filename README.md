@@ -4,13 +4,14 @@
 
 # Vibeporter
 
-A CLI utility for migrating chat histories and configuration files between different agent interfaces.
+Local context handoff for AI coding agents. Compact a long chat into a new native session in another agent while retaining the task, decisions, current status, and next steps.
 
 [![Documentation](https://img.shields.io/badge/docs-vibeporter.pages.dev-8b5cf6.svg)](https://vibeporter.pages.dev)
 [![OS Matrix](https://img.shields.io/badge/OS-Linux%20%7C%20macOS%20%7C%20Windows-8b5cf6.svg)](#)
 
 ## Features
 
+- Creates compact context handoffs locally; no cloud, accounts, telemetry, or background service.
 - Converts chat histories from JSONL or SQLite into a standard format.
 - Supports Claude Code, OpenCode, Gemini CLI, Antigravity, Kimi Code, DeepSeek Harness, and Cursor (read and write).
 - Copies configuration files (e.g., `CLAUDE.md` to `GEMINI.md`).
@@ -40,8 +41,13 @@ npx vibeporter@latest list claudecode
 ```bash
 vibeporter list claudecode
 
-vibeporter migrate --from claudecode --to gemini \
-  --source <chat-id-from-list>
+vibeporter handoff --from claudecode --source <chat-id-from-list> \
+  --to opencode --compact 200k
+
+vibeporter handoff --from cursor --source /path/to/chat --to gemini \
+  --compact 100k --strategy recent --dry-run
+
+vibeporter serve
 
 vibeporter search "fix database bug" --agent gemini
 vibeporter stats --json | jq

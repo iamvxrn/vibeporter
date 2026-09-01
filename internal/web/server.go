@@ -20,6 +20,8 @@ import (
 	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/opencode"
 	"vibeporter/internal/adapters/windsurf"
+	"vibeporter/internal/compact"
+	"vibeporter/internal/handoff"
 	"vibeporter/internal/models"
 )
 
@@ -66,22 +68,93 @@ func Serve(addr string) error {
 	mux.HandleFunc("/api/search", handleSearch)
 	mux.HandleFunc("/api/diff", handleDiff)
 	mux.HandleFunc("/api/migrate", handleMigrate)
+	mux.HandleFunc("/api/handoff", handleHandoff)
+	mux.HandleFunc("/api/handoff/preview", handleHandoffPreview)
 	mux.HandleFunc("/api/stats", handleStats)
 	fmt.Printf("vibeporter web at http://%s\n", addr)
-	return http.ListenAndServe(addr, withCORS(mux))
+	return http.ListenAndServe(addr, mux)
 }
 
-func withCORS(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(204)
-			return
+type handoffRequest struct {
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	Compact  string `json:"compact"`
+	Strategy string `json:"strategy"`
+}
+
+func handoffRequestFrom(r *http.Request) (handoffRequest, error) {
+	var request handoffRequest
+	if r.Method != http.MethodPost {
+		return request, fmt.Errorf("POST required")
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return request, fmt.Errorf("invalid JSON: %w", err)
+	}
+	request.From, request.To = strings.ToLower(strings.TrimSpace(request.From)), strings.ToLower(strings.TrimSpace(request.To))
+	request.Source, request.Compact = strings.TrimSpace(request.Source), strings.TrimSpace(request.Compact)
+	if request.From == "" || request.To == "" || request.Source == "" || request.Compact == "" {
+		return request, fmt.Errorf("from, to, source, and compact are required")
+	}
+	return request, nil
+}
+
+func executeHandoff(r *http.Request, dryRun bool) (handoff.Result, error) {
+	request, err := handoffRequestFrom(r)
+	if err != nil {
+		return handoff.Result{}, err
+	}
+	budget, err := compact.ParseBudget(request.Compact)
+	if err != nil {
+		return handoff.Result{}, err
+	}
+	extractor, ok := extractors[request.From]
+	if !ok {
+		return handoff.Result{}, fmt.Errorf("unknown source agent")
+	}
+	injector, ok := injectors[request.To]
+	if !ok {
+		return handoff.Result{}, fmt.Errorf("unknown target agent")
+	}
+	path := request.Source
+	if chats, _ := extractor.ListConversations(); len(chats) > 0 {
+		for _, chat := range chats {
+			if chat.ID == request.Source || chat.Path == request.Source {
+				path = chat.Path
+				break
+			}
 		}
-		h.ServeHTTP(w, r)
-	})
+	}
+	conversation, err := extractor.Extract(path)
+	if err != nil {
+		return handoff.Result{}, fmt.Errorf("extracting: %w", err)
+	}
+	return handoff.Execute(conversation, injector, handoff.Options{SourceAgent: request.From, SourceID: conversation.ID, TargetAgent: request.To, TargetPath: request.Target, Budget: budget, Strategy: compact.Strategy(request.Strategy), DryRun: dryRun})
+}
+
+func handleHandoffPreview(w http.ResponseWriter, r *http.Request) {
+	result, err := executeHandoff(r, true)
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, result)
+}
+
+func handleHandoff(w http.ResponseWriter, r *http.Request) {
+	result, err := executeHandoff(r, false)
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, result)
+}
+
+func writeAPIError(w http.ResponseWriter, status int, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 }
 
 func handleAgents(w http.ResponseWriter, r *http.Request) {
