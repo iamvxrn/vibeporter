@@ -90,8 +90,7 @@ func TestDeriveIDFromPath(t *testing.T) {
 
 func TestRoundTripTranscript(t *testing.T) {
 	dir := t.TempDir()
-	os.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
-	defer os.Unsetenv("ANTIGRAVITY_BRAIN_DIR")
+	t.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
 
 	ts := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	original := &models.Conversation{
@@ -139,8 +138,7 @@ func TestRoundTripTranscript(t *testing.T) {
 
 func TestRoundTripHandoffMD(t *testing.T) {
 	dir := t.TempDir()
-	os.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
-	defer os.Unsetenv("ANTIGRAVITY_BRAIN_DIR")
+	t.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
 
 	original := &models.Conversation{
 		ID:          "md-test",
@@ -197,8 +195,7 @@ func TestRoundTripHandoffMD(t *testing.T) {
 
 func TestInjectCreatesMarkdown(t *testing.T) {
 	dir := t.TempDir()
-	os.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
-	defer os.Unsetenv("ANTIGRAVITY_BRAIN_DIR")
+	t.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
 
 	conv := &models.Conversation{
 		ID:          "inject-test",
@@ -236,8 +233,7 @@ func TestInjectCreatesMarkdown(t *testing.T) {
 
 func TestInjectWithToolCalls(t *testing.T) {
 	dir := t.TempDir()
-	os.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
-	defer os.Unsetenv("ANTIGRAVITY_BRAIN_DIR")
+	t.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
 
 	args := map[string]string{"path": "/tmp/test.go"}
 	argsJSON, _ := json.Marshal(args)
@@ -281,8 +277,7 @@ func TestInjectWithToolCalls(t *testing.T) {
 
 func TestListConversationsIncludesHandoffMD(t *testing.T) {
 	dir := t.TempDir()
-	os.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
-	defer os.Unsetenv("ANTIGRAVITY_BRAIN_DIR")
+	t.Setenv("ANTIGRAVITY_BRAIN_DIR", dir)
 
 	// Create a conversation with a handoff markdown
 	convDir := filepath.Join(dir, "handoff-conv-123")

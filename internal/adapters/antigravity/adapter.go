@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -411,6 +412,30 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 	return mdPath, nil
 }
 
+// errWriter lets a long sequence of Fprintf/Fprintln calls to one writer be
+// checked once at the end instead of after every line -- the pattern from Rob
+// Pike's "Errors are values". The first failure is latched; every call after
+// it is a no-op, so nothing written past that point can mask what actually
+// went wrong.
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (ew *errWriter) fprintf(format string, args ...interface{}) {
+	if ew.err != nil {
+		return
+	}
+	_, ew.err = fmt.Fprintf(ew.w, format, args...)
+}
+
+func (ew *errWriter) fprintln(args ...interface{}) {
+	if ew.err != nil {
+		return
+	}
+	_, ew.err = fmt.Fprintln(ew.w, args...)
+}
+
 // writeHandoffMarkdown formats a conversation as a readable markdown document
 // that can be pasted into an Antigravity chat or referenced via @mention.
 func writeHandoffMarkdown(conv *models.Conversation, path string) error {
@@ -422,73 +447,77 @@ func writeHandoffMarkdown(conv *models.Conversation, path string) error {
 		return err
 	}
 	defer func() { _ = f.Close() }()
-	w := bufio.NewWriter(f)
+	bw := bufio.NewWriter(f)
+	ew := &errWriter{w: bw}
 
 	title := strings.TrimSpace(conv.Title)
 	if title == "" {
 		title = "Handoff Context"
 	}
 
-	fmt.Fprintf(w, "# %s\n\n", title)
-	fmt.Fprintf(w, "> Handed off via Vibeporter from **%s** (id: `%s`)\n\n", conv.AgentSource, conv.ID)
-	fmt.Fprintln(w, "---")
-	fmt.Fprintln(w)
+	ew.fprintf("# %s\n\n", title)
+	ew.fprintf("> Handed off via Vibeporter from **%s** (id: `%s`)\n\n", conv.AgentSource, conv.ID)
+	ew.fprintln("---")
+	ew.fprintln()
 
 	for _, msg := range conv.Messages {
 		switch msg.Role {
 		case models.RoleUser:
-			fmt.Fprintln(w, "## 👤 User")
-			fmt.Fprintln(w)
-			fmt.Fprintln(w, msg.StringContent())
-			fmt.Fprintln(w)
+			ew.fprintln("## 👤 User")
+			ew.fprintln()
+			ew.fprintln(msg.StringContent())
+			ew.fprintln()
 		case models.RoleAssistant:
-			fmt.Fprintln(w, "## 🤖 Assistant")
-			fmt.Fprintln(w)
+			ew.fprintln("## 🤖 Assistant")
+			ew.fprintln()
 			for _, p := range msg.EffectiveParts() {
 				switch p.Kind {
 				case models.PartThinking:
-					fmt.Fprintln(w, "<details>")
-					fmt.Fprintln(w, "<summary>Thinking</summary>")
-					fmt.Fprintln(w)
-					fmt.Fprintln(w, p.Text)
-					fmt.Fprintln(w)
-					fmt.Fprintln(w, "</details>")
-					fmt.Fprintln(w)
+					ew.fprintln("<details>")
+					ew.fprintln("<summary>Thinking</summary>")
+					ew.fprintln()
+					ew.fprintln(p.Text)
+					ew.fprintln()
+					ew.fprintln("</details>")
+					ew.fprintln()
 				case models.PartText:
-					fmt.Fprintln(w, p.Text)
-					fmt.Fprintln(w)
+					ew.fprintln(p.Text)
+					ew.fprintln()
 				case models.PartToolCall:
-					fmt.Fprintf(w, "**Tool call**: `%s`", p.Name)
+					ew.fprintf("**Tool call**: `%s`", p.Name)
 					if strings.TrimSpace(p.ArgsJSON) != "" && p.ArgsJSON != "{}" {
-						fmt.Fprintf(w, "\n```json\n%s\n```", p.ArgsJSON)
+						ew.fprintf("\n```json\n%s\n```", p.ArgsJSON)
 					}
-					fmt.Fprintln(w)
-					fmt.Fprintln(w)
+					ew.fprintln()
+					ew.fprintln()
 				case models.PartToolResult:
-					fmt.Fprintln(w, "<details>")
-					fmt.Fprintln(w, "<summary>Tool result</summary>")
-					fmt.Fprintln(w)
+					ew.fprintln("<details>")
+					ew.fprintln("<summary>Tool result</summary>")
+					ew.fprintln()
 					if strings.TrimSpace(p.Text) != "" {
-						fmt.Fprintln(w, "```")
-						fmt.Fprintln(w, p.Text)
-						fmt.Fprintln(w, "```")
+						ew.fprintln("```")
+						ew.fprintln(p.Text)
+						ew.fprintln("```")
 					}
-					fmt.Fprintln(w)
-					fmt.Fprintln(w, "</details>")
-					fmt.Fprintln(w)
+					ew.fprintln()
+					ew.fprintln("</details>")
+					ew.fprintln()
 				}
 			}
 		case models.RoleSystem:
-			fmt.Fprintln(w, "## ⚙️ System")
-			fmt.Fprintln(w)
-			fmt.Fprintln(w, msg.StringContent())
-			fmt.Fprintln(w)
+			ew.fprintln("## ⚙️ System")
+			ew.fprintln()
+			ew.fprintln(msg.StringContent())
+			ew.fprintln()
 		}
-		fmt.Fprintln(w, "---")
-		fmt.Fprintln(w)
+		ew.fprintln("---")
+		ew.fprintln()
 	}
 
-	return w.Flush()
+	if ew.err != nil {
+		return ew.err
+	}
+	return bw.Flush()
 }
 
 // writeTranscriptJSONL writes the conversation as transcript.jsonl for backward
