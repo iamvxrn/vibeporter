@@ -42,23 +42,13 @@ var injectors = map[string]adapters.Injector{
 	"wind":        windsurf.NewAdapter(),
 }
 
-// canonicalAgents is the deduplicated set of agent names, one entry per
-// adapter. Aliases (ag, kimi, dhs, wind) resolve to these and must never be
-// enumerated alongside them, or commands that fan out over every agent (stats,
-// search) would visit the same adapter twice and double-count it.
-// TestRegistryAliasesAreCanonical keeps this in sync with the maps above.
-var canonicalAgents = []string{
-	"antigravity", "claudecode", "cursor", "dsh",
-	"gemini", "kimicode", "opencode", "windsurf",
-}
+// canonicalAgents and agentAliases are adapters.CanonicalAgents and
+// adapters.AgentAliases -- see there for why this is one shared list rather
+// than a copy per package. TestRegistryAliasesAreCanonical keeps this in
+// sync with the maps above.
+var canonicalAgents = adapters.CanonicalAgents
 
-// agentAliases maps each alias to its canonical agent name.
-var agentAliases = map[string]string{
-	"ag":   "antigravity",
-	"kimi": "kimicode",
-	"dhs":  "dsh",
-	"wind": "windsurf",
-}
+var agentAliases = adapters.AgentAliases
 
 const supportedExtractors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor, windsurf (wind)"
 const supportedInjectors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor, windsurf (wind)"

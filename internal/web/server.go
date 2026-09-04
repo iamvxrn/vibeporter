@@ -66,12 +66,11 @@ var injectors = map[string]adapters.Injector{
 	"dhs":         dsh.NewAdapter(),
 }
 
-// canonicalAgents is the deduplicated agent list the UI and every fan-out
-// handler share. Aliases (ag, kimi, dhs, wind) are deliberately excluded so an
-// adapter is never visited twice; every non-alias key of extractors must appear
-// here (enforced by TestWebAgentListCoversExtractors).
+// canonicalAgents is adapters.CanonicalAgents -- see there for why this is
+// one shared list rather than a copy per package. Every non-alias key of
+// extractors must appear here (enforced by TestWebAgentListCoversExtractors).
 func canonicalAgents() []string {
-	return []string{"antigravity", "claudecode", "cursor", "dsh", "gemini", "kimicode", "opencode", "windsurf"}
+	return adapters.CanonicalAgents
 }
 
 // sameOriginOnly refuses requests driven by another site. `vibeporter serve`
