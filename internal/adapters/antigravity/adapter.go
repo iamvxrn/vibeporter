@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,25 @@ func (a *Adapter) ListConversations() ([]adapters.ChatInfo, error) {
 			continue
 		}
 		id := e.Name()
+
+		// Check for a vibeporter-generated handoff markdown first.
+		handoffMD := filepath.Join(root, id, "handoff_context.md")
+		if info, err := os.Stat(handoffMD); err == nil {
+			chat := adapters.ChatInfo{
+				ID:        id,
+				Path:      handoffMD,
+				Agent:     "antigravity",
+				UpdatedAt: info.ModTime(),
+				Title:     titleFromHandoffMD(handoffMD),
+			}
+			if chat.Title == "" {
+				chat.Title = "Handoff"
+			}
+			chat.Project = safePrefix(id, 8)
+			chats = append(chats, chat)
+			continue
+		}
+
 		// transcript.jsonl under .system_generated/logs/
 		transcript := filepath.Join(root, id, ".system_generated", "logs", "transcript.jsonl")
 		if _, err := os.Stat(transcript); err != nil {
@@ -57,6 +77,23 @@ func (a *Adapter) ListConversations() ([]adapters.ChatInfo, error) {
 		chats = append(chats, chat)
 	}
 	return chats, nil
+}
+
+// titleFromHandoffMD reads the first H1 heading from a markdown file.
+func titleFromHandoffMD(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if strings.HasPrefix(line, "# ") {
+			return adapters.Clip(strings.TrimPrefix(line, "# "), 80)
+		}
+	}
+	return ""
 }
 
 func summarizeTranscript(path string, mod time.Time, fallbackID string) adapters.ChatInfo {
@@ -82,12 +119,18 @@ func summarizeTranscript(path string, mod time.Time, fallbackID string) adapters
 			}
 		}
 	})
-	// Project from brain folder's metadata? Try to infer from first tool call path
-	// Fallback to brain ID
 	if info.Project == "" {
-		info.Project = fallbackID[:8]
+		info.Project = safePrefix(fallbackID, 8)
 	}
 	return info
+}
+
+// safePrefix returns the first n characters of s, or s itself if shorter.
+func safePrefix(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }
 
 func extractUserRequest(content string) string {
@@ -110,11 +153,16 @@ func extractUserRequest(content string) string {
 }
 
 func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
-	// sourcePath may be ID or full path
+	// sourcePath may be ID, full path to transcript.jsonl, or handoff_context.md
 	path := sourcePath
 	if _, err := os.Stat(path); err != nil {
 		// try as ID under brainRoot
-		candidate := filepath.Join(brainRoot(), sourcePath, ".system_generated", "logs", "transcript.jsonl")
+		// First check for handoff markdown
+		candidate := filepath.Join(brainRoot(), sourcePath, "handoff_context.md")
+		if _, err := os.Stat(candidate); err == nil {
+			return extractHandoffMD(candidate, sourcePath)
+		}
+		candidate = filepath.Join(brainRoot(), sourcePath, ".system_generated", "logs", "transcript.jsonl")
 		if _, err := os.Stat(candidate); err == nil {
 			path = candidate
 		} else {
@@ -122,34 +170,60 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 			if _, err := os.Stat(candidate); err == nil {
 				path = candidate
 			} else {
-				return nil, fmt.Errorf("could not open file: %w", err)
+				return nil, fmt.Errorf("could not find conversation %q: no transcript or handoff file", sourcePath)
 			}
 		}
 	}
+
+	// Check if path points to a handoff markdown
+	if strings.HasSuffix(path, ".md") {
+		id := deriveIDFromPath(path)
+		return extractHandoffMD(path, id)
+	}
+
+	return extractTranscript(path)
+}
+
+// extractHandoffMD extracts a conversation from a vibeporter handoff markdown file.
+func extractHandoffMD(path, id string) (*models.Conversation, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read handoff file: %w", err)
+	}
+	content := string(data)
+	conv := &models.Conversation{
+		ID:          id,
+		AgentSource: "antigravity",
+		Messages:    []models.Message{},
+		Metadata:    map[string]interface{}{},
+	}
+	// The handoff markdown is one big context block — treat it as a system message.
+	msg := models.NewMessage(models.RoleSystem, []models.Part{models.TextPart(content)})
+	conv.Messages = append(conv.Messages, msg)
+
+	// Try to extract title from first heading
+	lines := strings.Split(content, "\n")
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if strings.HasPrefix(l, "# ") {
+			conv.Title = adapters.Clip(strings.TrimPrefix(l, "# "), 80)
+			break
+		}
+	}
+	if conv.Title == "" {
+		conv.Title = "Handoff"
+	}
+	return conv, nil
+}
+
+func extractTranscript(path string) (*models.Conversation, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("could not open file: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
-	id := filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(path))))
-	if id == "logs" || id == "." {
-		id = strings.TrimSuffix(filepath.Base(path), ".jsonl")
-		id = strings.TrimSuffix(id, ".json")
-		if id == "transcript" || id == "transcript_full" {
-			id = filepath.Base(filepath.Dir(filepath.Dir(path)))
-		}
-	}
-	// If path is direct transcript, derive ID from brain folder
-	if strings.Contains(path, "/brain/") {
-		parts := strings.Split(filepath.ToSlash(path), "/brain/")
-		if len(parts) > 1 {
-			rest := parts[1]
-			if idx := strings.Index(rest, "/"); idx > 0 {
-				id = rest[:idx]
-			}
-		}
-	}
+	id := deriveIDFromPath(path)
 
 	conv := &models.Conversation{
 		ID:          id,
@@ -192,7 +266,6 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 				if txt == "" {
 					continue
 				}
-				// Check for cwd in content? Not needed for now
 				msg := models.NewMessage(models.RoleUser, []models.Part{models.TextPart(txt)})
 				msg.Timestamp = ts
 				conv.Messages = append(conv.Messages, msg)
@@ -201,10 +274,9 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 				}
 			}
 		case "SYSTEM":
-			if typ == "CHECKPOINT" {
-				// Skip checkpoint summary noise, but keep as system if needed
-				continue
-			}
+			// Keep system messages. CHECKPOINT records with empty content are
+			// noise and can be skipped, but non-empty ones carry useful context
+			// (e.g. handoff provenance headers).
 			content, _ := rec["content"].(string)
 			if strings.TrimSpace(content) == "" {
 				continue
@@ -220,8 +292,6 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 			}
 			// content field (for GENERIC tool outputs)
 			if content, ok := rec["content"].(string); ok && strings.TrimSpace(content) != "" {
-				// Heuristic: if this is a tool output (contains Created At/Output), treat as text
-				// For now just text part
 				parts = append(parts, models.TextPart(content))
 			}
 			// tool_calls
@@ -267,11 +337,36 @@ func (a *Adapter) Extract(sourcePath string) (*models.Conversation, error) {
 	return conv, sc.Err()
 }
 
+// deriveIDFromPath extracts a conversation UUID from a brain path.
+func deriveIDFromPath(path string) string {
+	// Try to extract from /brain/<uuid>/... pattern
+	if strings.Contains(path, "/brain/") {
+		parts := strings.Split(filepath.ToSlash(path), "/brain/")
+		if len(parts) > 1 {
+			rest := parts[1]
+			if idx := strings.Index(rest, "/"); idx > 0 {
+				return rest[:idx]
+			}
+			return rest
+		}
+	}
+	// Fallback: try parent directory name
+	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	if base == "transcript" || base == "transcript_full" {
+		// path like .../logs/transcript.jsonl → go up to conversation dir
+		return filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	}
+	if base == "handoff_context" {
+		// path like .../<uuid>/handoff_context.md
+		return filepath.Base(filepath.Dir(path))
+	}
+	return filepath.Base(filepath.Dir(path))
+}
+
 func (a *Adapter) DefaultTarget(conv *models.Conversation) (string, error) {
-	// Write to a temp brain-like location: use brainRoot with new UUID
 	id := adapters.NewUUID()
 	root := brainRoot()
-	return filepath.Join(root, id, ".system_generated", "logs", "transcript.jsonl"), nil
+	return filepath.Join(root, id, "handoff_context.md"), nil
 }
 
 func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, error) {
@@ -282,21 +377,158 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 			return "", err
 		}
 	}
-	// If target is a directory or brain ID, construct transcript path
-	if info, err := os.Stat(targetPath); err == nil && info.IsDir() {
-		targetPath = filepath.Join(targetPath, ".system_generated", "logs", "transcript.jsonl")
-	} else if !strings.HasSuffix(targetPath, ".jsonl") {
+
+	// If target is a directory or brain ID, construct the handoff path
+	if info, statErr := os.Stat(targetPath); statErr == nil && info.IsDir() {
+		targetPath = filepath.Join(targetPath, "handoff_context.md")
+	} else if !strings.HasSuffix(targetPath, ".md") && !strings.HasSuffix(targetPath, ".jsonl") {
 		// Assume it's a brain ID
 		if !strings.Contains(targetPath, "/") {
-			targetPath = filepath.Join(brainRoot(), targetPath, ".system_generated", "logs", "transcript.jsonl")
+			targetPath = filepath.Join(brainRoot(), targetPath, "handoff_context.md")
 		}
 	}
+
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		return "", err
 	}
-	f, err := os.Create(targetPath)
-	if err != nil {
+
+	// Write the markdown handoff file
+	mdPath := targetPath
+	if strings.HasSuffix(targetPath, ".jsonl") {
+		// Legacy path — write transcript.jsonl AND handoff markdown next to it
+		mdPath = filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(targetPath))), "handoff_context.md")
+		if err := writeTranscriptJSONL(conv, targetPath); err != nil {
+			return "", err
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Dir(mdPath), 0o755); err != nil {
 		return "", err
+	}
+	if err := writeHandoffMarkdown(conv, mdPath); err != nil {
+		return "", err
+	}
+
+	return mdPath, nil
+}
+
+// errWriter lets a long sequence of Fprintf/Fprintln calls to one writer be
+// checked once at the end instead of after every line -- the pattern from Rob
+// Pike's "Errors are values". The first failure is latched; every call after
+// it is a no-op, so nothing written past that point can mask what actually
+// went wrong.
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (ew *errWriter) fprintf(format string, args ...interface{}) {
+	if ew.err != nil {
+		return
+	}
+	_, ew.err = fmt.Fprintf(ew.w, format, args...)
+}
+
+func (ew *errWriter) fprintln(args ...interface{}) {
+	if ew.err != nil {
+		return
+	}
+	_, ew.err = fmt.Fprintln(ew.w, args...)
+}
+
+// writeHandoffMarkdown formats a conversation as a readable markdown document
+// that can be pasted into an Antigravity chat or referenced via @mention.
+func writeHandoffMarkdown(conv *models.Conversation, path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	bw := bufio.NewWriter(f)
+	ew := &errWriter{w: bw}
+
+	title := strings.TrimSpace(conv.Title)
+	if title == "" {
+		title = "Handoff Context"
+	}
+
+	ew.fprintf("# %s\n\n", title)
+	ew.fprintf("> Handed off via Vibeporter from **%s** (id: `%s`)\n\n", conv.AgentSource, conv.ID)
+	ew.fprintln("---")
+	ew.fprintln()
+
+	for _, msg := range conv.Messages {
+		switch msg.Role {
+		case models.RoleUser:
+			ew.fprintln("## 👤 User")
+			ew.fprintln()
+			ew.fprintln(msg.StringContent())
+			ew.fprintln()
+		case models.RoleAssistant:
+			ew.fprintln("## 🤖 Assistant")
+			ew.fprintln()
+			for _, p := range msg.EffectiveParts() {
+				switch p.Kind {
+				case models.PartThinking:
+					ew.fprintln("<details>")
+					ew.fprintln("<summary>Thinking</summary>")
+					ew.fprintln()
+					ew.fprintln(p.Text)
+					ew.fprintln()
+					ew.fprintln("</details>")
+					ew.fprintln()
+				case models.PartText:
+					ew.fprintln(p.Text)
+					ew.fprintln()
+				case models.PartToolCall:
+					ew.fprintf("**Tool call**: `%s`", p.Name)
+					if strings.TrimSpace(p.ArgsJSON) != "" && p.ArgsJSON != "{}" {
+						ew.fprintf("\n```json\n%s\n```", p.ArgsJSON)
+					}
+					ew.fprintln()
+					ew.fprintln()
+				case models.PartToolResult:
+					ew.fprintln("<details>")
+					ew.fprintln("<summary>Tool result</summary>")
+					ew.fprintln()
+					if strings.TrimSpace(p.Text) != "" {
+						ew.fprintln("```")
+						ew.fprintln(p.Text)
+						ew.fprintln("```")
+					}
+					ew.fprintln()
+					ew.fprintln("</details>")
+					ew.fprintln()
+				}
+			}
+		case models.RoleSystem:
+			ew.fprintln("## ⚙️ System")
+			ew.fprintln()
+			ew.fprintln(msg.StringContent())
+			ew.fprintln()
+		}
+		ew.fprintln("---")
+		ew.fprintln()
+	}
+
+	if ew.err != nil {
+		return ew.err
+	}
+	return bw.Flush()
+}
+
+// writeTranscriptJSONL writes the conversation as transcript.jsonl for backward
+// compatibility with vibeporter list/stats/search commands.
+func writeTranscriptJSONL(conv *models.Conversation, path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
 	}
 	defer func() { _ = f.Close() }()
 	w := bufio.NewWriter(f)
@@ -313,11 +545,10 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 			rec["content"] = "<USER_REQUEST>\n" + msg.StringContent() + "\n</USER_REQUEST>"
 		case models.RoleSystem:
 			rec["source"] = "SYSTEM"
-			rec["type"] = "CHECKPOINT"
+			rec["type"] = "GENERIC"
 			rec["content"] = msg.StringContent()
 		case models.RoleAssistant:
 			rec["source"] = "MODEL"
-			// Distinguish thinking vs generic
 			hasThinking := false
 			hasTool := false
 			for _, p := range msg.EffectiveParts() {
@@ -366,14 +597,11 @@ func (a *Adapter) Inject(conv *models.Conversation, targetPath string) (string, 
 		}
 		b, _ := json.Marshal(rec)
 		if _, err := w.Write(b); err != nil {
-			return "", err
+			return err
 		}
 		if err := w.WriteByte('\n'); err != nil {
-			return "", err
+			return err
 		}
 	}
-	if err := w.Flush(); err != nil {
-		return "", err
-	}
-	return targetPath, nil
+	return w.Flush()
 }

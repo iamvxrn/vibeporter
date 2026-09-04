@@ -49,6 +49,33 @@ vibeporter migrate --from <agent> --to <agent> --source <id> --target /tmp/out.j
 - `--source` — Chat id from `list`, or a file path
 - `--target` — Optional. When omitted, writes into the target agent's native store.
 
+## `diff`
+
+Compare the original chat with what the target agent would store after migration -- before running a real one.
+
+```bash
+vibeporter diff --from claudecode --to gemini --source <id>
+vibeporter diff --from claudecode --to gemini --source <id> --json
+```
+
+It extracts the source, does a temp migration to the target format, and reports counts and dropped parts. No real data is written to the target agent's store -- this is `migrate`'s dry run.
+
+- `--from` / `--to` / `--source` — same meaning as `migrate`.
+- `--json` — machine-readable report instead of the human summary.
+
+## `export`
+
+Extract a chat and render it as Markdown or HTML, for sharing or docs -- not a handoff to another agent.
+
+```bash
+vibeporter export --from claudecode --source <id> --format markdown --output chat.md
+vibeporter export --from gemini --source ~/.gemini/tmp/.../chats/session.jsonl --format html
+```
+
+- `--from` / `--source` — same meaning as `migrate`.
+- `--format` — `markdown` or `html`. Defaults to `markdown`.
+- `--output` — output file. Defaults to stdout; pass `-` for stdout explicitly.
+
 ## `serve`
 
 ```bash
@@ -56,6 +83,8 @@ vibeporter serve
 ```
 
 Starts the local-only web app. Select a chat, choose **Handoff**, set a compact budget and strategy, run a dry preview, then create a native target session. All chat data stays on your device.
+
+It binds to loopback, but loopback is reachable from any page open in your browser, not just this one -- so every API route refuses a request that doesn't look like it came from the app itself (checked by `Sec-Fetch-Site`, `Origin`, and requiring `Content-Type: application/json` on writes, which a cross-site request cannot set without a preflight this server never approves).
 
 ## `search`
 

@@ -1,5 +1,5 @@
 let chats = [], filtered = [], selected = null;
-let agents = ["claudecode","cursor","opencode","antigravity","kimicode","gemini","windsurf"];
+let agents = ["antigravity","claudecode","cursor","dsh","gemini","kimicode","opencode","windsurf"];
 let activeAgent = "all";
 let handoffBudget = '200k';
 

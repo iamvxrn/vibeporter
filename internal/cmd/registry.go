@@ -42,5 +42,13 @@ var injectors = map[string]adapters.Injector{
 	"wind":        windsurf.NewAdapter(),
 }
 
+// canonicalAgents and agentAliases are adapters.CanonicalAgents and
+// adapters.AgentAliases -- see there for why this is one shared list rather
+// than a copy per package. TestRegistryAliasesAreCanonical keeps this in
+// sync with the maps above.
+var canonicalAgents = adapters.CanonicalAgents
+
+var agentAliases = adapters.AgentAliases
+
 const supportedExtractors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor, windsurf (wind)"
 const supportedInjectors = "claudecode, opencode, gemini, antigravity (ag), kimicode (kimi), dsh (dhs), cursor, windsurf (wind)"

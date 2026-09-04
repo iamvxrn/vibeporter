@@ -226,9 +226,7 @@ func extractSession(dbPath, sessionID string) (*models.Conversation, error) {
 			if err := partRows.Scan(&partDataStr); err != nil {
 				continue
 			}
-			if p, ok := parseOpenCodePart(partDataStr); ok {
-				parts = append(parts, p)
-			}
+			parts = append(parts, parseOpenCodeParts(partDataStr)...)
 		}
 		_ = partRows.Close()
 		if len(parts) == 0 {
@@ -240,6 +238,48 @@ func extractSession(dbPath, sessionID string) (*models.Conversation, error) {
 	}
 
 	return conv, nil
+}
+
+// parseOpenCodeParts decodes one stored part. A completed tool part carries
+// both its input and its output in state; the output is the tool result and is
+// returned as a second part so it is not lost on extract (a "tool" part that
+// only became a ToolCallPart silently discarded every command output, file
+// read, and search result in the session).
+func parseOpenCodeParts(raw string) []models.Part {
+	p, ok := parseOpenCodePart(raw)
+	if !ok {
+		return nil
+	}
+	out := []models.Part{p}
+	if p.Kind != models.PartToolCall {
+		return out
+	}
+	if text, isErr, ok := openCodeToolOutput(raw); ok {
+		out = append(out, models.ToolResultPart(p.ID, text, isErr))
+	}
+	return out
+}
+
+// openCodeToolOutput pulls state.output (and error status) off a stored tool part.
+func openCodeToolOutput(raw string) (string, bool, bool) {
+	var part map[string]interface{}
+	if json.Unmarshal([]byte(raw), &part) != nil {
+		return "", false, false
+	}
+	st, ok := part["state"].(map[string]interface{})
+	if !ok {
+		return "", false, false
+	}
+	text, _ := st["output"].(string)
+	if strings.TrimSpace(text) == "" {
+		// Some versions store the failure text under "error" instead.
+		if e, _ := st["error"].(string); strings.TrimSpace(e) != "" {
+			return e, true, true
+		}
+		return "", false, false
+	}
+	status, _ := st["status"].(string)
+	return text, status == "error", true
 }
 
 func parseOpenCodePart(raw string) (models.Part, bool) {

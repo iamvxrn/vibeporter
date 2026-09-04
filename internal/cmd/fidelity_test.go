@@ -125,6 +125,8 @@ func TestFidelityRoundTripPerAdapter(t *testing.T) {
 			var target string
 			if tc.isDB {
 				target = "" // use default DB under HOME
+			} else if tc.name == "antigravity" {
+				target = filepath.Join(t.TempDir(), "handoff_context.md")
 			} else {
 				target = filepath.Join(t.TempDir(), tc.name+".jsonl")
 			}
@@ -143,6 +145,20 @@ func TestFidelityRoundTripPerAdapter(t *testing.T) {
 			// Count parts
 			wantText, wantThinking, wantTools := countParts(syn)
 			gotText, gotThinking, gotTools := countParts(round)
+
+			// Antigravity markdown round-trip collapses all messages into one
+			// system message containing the full context. So we only verify
+			// that the content is preserved, not the per-part counts.
+			if tc.name == "antigravity" {
+				if gotText == 0 {
+					t.Fatalf("no text parts for %s", tc.name)
+				}
+				if !containsQuery(round, "базой") && !containsQuery(round, "Готово") {
+					t.Fatalf("round-trip lost query context for %s", tc.name)
+				}
+				return
+			}
+
 			// opencode drops system as user + drops tool_result (counts as tool), but should keep tool_call
 			// So allow small diff for tool_result (original has 2 tool_result, target may drop them)
 			if gotText < wantText-2 {
