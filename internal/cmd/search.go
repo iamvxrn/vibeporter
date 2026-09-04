@@ -74,20 +74,7 @@ func targetAgents(filter string) []string {
 		}
 		return []string{filter}
 	}
-	// all extractor keys deduped and sorted
-	seen := map[string]bool{}
-	var out []string
-	for k := range extractors {
-		// normalize aliases: kimi/kimicode, dsh/dhs
-		if k == "kimi" || k == "dhs" {
-			continue
-		}
-		if seen[k] {
-			continue
-		}
-		seen[k] = true
-		out = append(out, k)
-	}
+	out := append([]string(nil), canonicalAgents...)
 	sort.Strings(out)
 	return out
 }

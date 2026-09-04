@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,6 +18,7 @@ import (
 	"vibeporter/internal/adapters/antigravity"
 	"vibeporter/internal/adapters/claudecode"
 	"vibeporter/internal/adapters/cursor"
+	"vibeporter/internal/adapters/dsh"
 	"vibeporter/internal/adapters/gemini"
 	"vibeporter/internal/adapters/kimicode"
 	"vibeporter/internal/adapters/opencode"
@@ -44,6 +47,8 @@ var extractors = map[string]adapters.Extractor{
 	"cursor":      cursor.NewAdapter(),
 	"windsurf":    windsurf.NewAdapter(),
 	"wind":        windsurf.NewAdapter(),
+	"dsh":         dsh.NewAdapter(),
+	"dhs":         dsh.NewAdapter(),
 }
 
 var injectors = map[string]adapters.Injector{
@@ -57,22 +62,73 @@ var injectors = map[string]adapters.Injector{
 	"cursor":      cursor.NewAdapter(),
 	"windsurf":    windsurf.NewAdapter(),
 	"wind":        windsurf.NewAdapter(),
+	"dsh":         dsh.NewAdapter(),
+	"dhs":         dsh.NewAdapter(),
+}
+
+// canonicalAgents is the deduplicated agent list the UI and every fan-out
+// handler share. Aliases (ag, kimi, dhs, wind) are deliberately excluded so an
+// adapter is never visited twice; every non-alias key of extractors must appear
+// here (enforced by TestWebAgentListCoversExtractors).
+func canonicalAgents() []string {
+	return []string{"antigravity", "claudecode", "cursor", "dsh", "gemini", "kimicode", "opencode", "windsurf"}
+}
+
+// sameOriginOnly refuses requests driven by another site. `vibeporter serve`
+// listens on loopback, but loopback is still reachable from any page the user
+// has open: a cross-origin POST whose body is a "simple" content type is sent
+// without a CORS preflight, so the request lands and its side effects happen
+// even though the attacker cannot read the response. /api/handoff and
+// /api/migrate take a caller-supplied `target` path, so without this guard a
+// visited web page could write a file of its choosing anywhere the user can
+// write. Requests from the bundled UI carry either no Origin or this server's
+// own, and always send Content-Type: application/json.
+func sameOriginOnly(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+			writeAPIError(w, http.StatusForbidden, fmt.Errorf("cross-site request refused"))
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			u, err := url.Parse(origin)
+			if err != nil || !strings.EqualFold(u.Host, r.Host) {
+				writeAPIError(w, http.StatusForbidden, fmt.Errorf("cross-origin request refused"))
+				return
+			}
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			// A cross-origin caller cannot set this content type without a
+			// preflight, which this handler never approves.
+			mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			if err != nil || mt != "application/json" {
+				writeAPIError(w, http.StatusUnsupportedMediaType, fmt.Errorf("Content-Type: application/json required"))
+				return
+			}
+		}
+		next(w, r)
+	}
 }
 
 func Serve(addr string) error {
+	fmt.Printf("vibeporter web at http://%s\n", addr)
+	return http.ListenAndServe(addr, newMux())
+}
+
+// newMux wires every route. All /api routes go through sameOriginOnly; keep it
+// that way when adding one (TestEveryAPIRouteIsGuarded checks).
+func newMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/", staticHandler())
-	mux.HandleFunc("/api/agents", handleAgents)
-	mux.HandleFunc("/api/chats", handleChats)
-	mux.HandleFunc("/api/conversation", handleConversation)
-	mux.HandleFunc("/api/search", handleSearch)
-	mux.HandleFunc("/api/diff", handleDiff)
-	mux.HandleFunc("/api/migrate", handleMigrate)
-	mux.HandleFunc("/api/handoff", handleHandoff)
-	mux.HandleFunc("/api/handoff/preview", handleHandoffPreview)
-	mux.HandleFunc("/api/stats", handleStats)
-	fmt.Printf("vibeporter web at http://%s\n", addr)
-	return http.ListenAndServe(addr, mux)
+	mux.HandleFunc("/api/agents", sameOriginOnly(handleAgents))
+	mux.HandleFunc("/api/chats", sameOriginOnly(handleChats))
+	mux.HandleFunc("/api/conversation", sameOriginOnly(handleConversation))
+	mux.HandleFunc("/api/search", sameOriginOnly(handleSearch))
+	mux.HandleFunc("/api/diff", sameOriginOnly(handleDiff))
+	mux.HandleFunc("/api/migrate", sameOriginOnly(handleMigrate))
+	mux.HandleFunc("/api/handoff", sameOriginOnly(handleHandoff))
+	mux.HandleFunc("/api/handoff/preview", sameOriginOnly(handleHandoffPreview))
+	mux.HandleFunc("/api/stats", sameOriginOnly(handleStats))
+	return mux
 }
 
 type handoffRequest struct {
@@ -158,7 +214,7 @@ func writeAPIError(w http.ResponseWriter, status int, err error) {
 }
 
 func handleAgents(w http.ResponseWriter, r *http.Request) {
-	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"}
+	agents := canonicalAgents()
 	writeJSON(w, agents)
 }
 
@@ -167,7 +223,7 @@ func handleChats(w http.ResponseWriter, r *http.Request) {
 	if agent == "" {
 		// all
 		var all []adapters.ChatInfo
-		for _, ag := range []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"} {
+		for _, ag := range canonicalAgents() {
 			ext, ok := extractors[ag]
 			if !ok {
 				continue
@@ -234,7 +290,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "q required", 400)
 		return
 	}
-	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"}
+	agents := canonicalAgents()
 	if agent != "" {
 		agents = []string{agent}
 	}
@@ -549,7 +605,7 @@ func handleMigrate(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStats(w http.ResponseWriter, r *http.Request) {
-	agents := []string{"claudecode", "cursor", "opencode", "antigravity", "kimicode", "gemini", "windsurf"}
+	agents := canonicalAgents()
 	var rows []map[string]interface{}
 	for _, ag := range agents {
 		ext, ok := extractors[ag]
