@@ -13,7 +13,7 @@ var portDir string
 
 var portCmd = &cobra.Command{
 	Use:   "port-config",
-	Short: "Port project configuration files (like CLAUDE.md) between agents",
+	Short: "Port project instruction files (like CLAUDE.md) between agents",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Porting configs in %s from %s to %s...\n", portDir, fromAgent, toAgent)
 

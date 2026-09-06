@@ -16,8 +16,15 @@ var (
 )
 
 var handoffCmd = &cobra.Command{
-	Use:          "handoff",
-	Short:        "Compact a chat and create a native session in another agent",
+	Use:   "handoff",
+	Short: "Deliver a context packet into a native session in another agent",
+	Long: `Select local engineering context to a token budget and create a fresh native
+session in the target agent. The result is a context packet: compacted source
+session plus provenance. It never overwrites the source and uses no cloud or LLM.
+
+Examples:
+  vibeporter handoff --from claudecode --source abc123 --to opencode --compact 200k
+  vibeporter handoff --from cursor --source /path/to/chat --to gemini --compact 100k --strategy recent --dry-run`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		budget, err := compact.ParseBudget(handoffBudget)
@@ -52,7 +59,7 @@ var handoffCmd = &cobra.Command{
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Dry run: %s -> %s, tokens~ %d -> %d (budget %d)\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.Budget)
 			return nil
 		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created handoff %s -> %s: tokens~ %d -> %d\nWrote %s\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.TargetPath)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created context packet %s -> %s: tokens~ %d -> %d\nWrote %s\n", result.SourceAgent, result.TargetAgent, result.Original, result.Transferred, result.TargetPath)
 		return nil
 	},
 }
@@ -60,7 +67,7 @@ var handoffCmd = &cobra.Command{
 func init() {
 	handoffCmd.Flags().StringVar(&handoffFrom, "from", "", "Source agent")
 	handoffCmd.Flags().StringVar(&handoffTo, "to", "", "Target agent")
-	handoffCmd.Flags().StringVar(&handoffSource, "source", "", "Chat id from list, or a file path")
+	handoffCmd.Flags().StringVar(&handoffSource, "source", "", "Source session id from list, or a file path")
 	handoffCmd.Flags().StringVar(&handoffTarget, "target", "", "Optional output path (defaults to the target agent's native store)")
 	handoffCmd.Flags().StringVar(&handoffBudget, "compact", "", "Required context budget: 50k, 100k, 200k, or tokens")
 	handoffCmd.Flags().StringVar(&handoffStrategy, "strategy", "smart", "Compaction strategy: smart or recent")

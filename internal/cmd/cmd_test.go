@@ -96,7 +96,7 @@ func TestRegistryAliases(t *testing.T) {
 
 func TestPrintListHuman(t *testing.T) {
 	empty := captureStdout(t, func() { printListHuman("gemini", nil, false) })
-	if !strings.Contains(empty, "No chats found") {
+	if !strings.Contains(empty, "No source sessions found") {
 		t.Fatalf("empty: %q", empty)
 	}
 	one := captureStdout(t, func() {
@@ -105,7 +105,7 @@ func TestPrintListHuman(t *testing.T) {
 			UpdatedAt: time.Unix(1_700_000_000, 0).UTC(),
 		}}, true)
 	})
-	if !strings.Contains(one, "1 chat") || !strings.Contains(one, "Untitled") || !strings.Contains(one, "PATH") {
+	if !strings.Contains(one, "1 source session") || !strings.Contains(one, "Untitled") || !strings.Contains(one, "PATH") {
 		t.Fatalf("one: %q", one)
 	}
 	many := captureStdout(t, func() {
@@ -114,7 +114,7 @@ func TestPrintListHuman(t *testing.T) {
 			{ID: "b", Title: "two", Path: "b"},
 		}, false)
 	})
-	if !strings.Contains(many, "2 chats") || !strings.Contains(many, "one line") {
+	if !strings.Contains(many, "2 source sessions") || !strings.Contains(many, "one line") {
 		t.Fatalf("many: %q", many)
 	}
 }

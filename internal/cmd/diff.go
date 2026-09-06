@@ -20,13 +20,15 @@ var (
 
 var diffCmd = &cobra.Command{
 	Use:   "diff",
-	Short: "Show what would be lost or changed by a migration",
-	Long: `Compare the original chat with what the target agent would store after migration.
+	Short: "Show what a raw session copy would drop or change",
+	Long: `Compare the original source session with what the target agent would store
+after a raw copy. Prefer this before copying; use handoff --dry-run for
+budgeted context packets.
 
-It extracts the source, does a temp migration to the target format, and reports
+It extracts the source, does a temp round-trip to the target format, and reports
 counts and dropped parts. No real data is written to the target agent's store.
 
-Example:
+Examples:
   vibeporter diff --from claudecode --to gemini --source <id>`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -221,7 +223,7 @@ func printDiffHuman(orig, round *models.Conversation, from, to string) {
 	}
 
 	fmt.Println()
-	fmt.Printf("%s run %s to inspect the full text before migrating.\n",
+	fmt.Printf("%s run %s to inspect the full text before copying.\n",
 		colorize(colorDim, "Tip:"),
 		colorize(colorBrightCyan+colorUnderline, fmt.Sprintf("vibeporter export --from %s --source %s --format markdown | less", from, orig.ID)))
 }
@@ -277,7 +279,7 @@ func printDiffJSON(orig, round *models.Conversation) error {
 func init() {
 	diffCmd.Flags().StringVar(&diffFrom, "from", "", "Source agent")
 	diffCmd.Flags().StringVar(&diffTo, "to", "", "Target agent")
-	diffCmd.Flags().StringVar(&diffSource, "source", "", "Chat id from list, or a file path")
+	diffCmd.Flags().StringVar(&diffSource, "source", "", "Source session id from list, or a file path")
 	diffCmd.Flags().BoolVar(&diffJSON, "json", false, "Machine-readable JSON")
 	_ = diffCmd.MarkFlagRequired("from")
 	_ = diffCmd.MarkFlagRequired("to")

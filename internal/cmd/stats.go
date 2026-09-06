@@ -31,10 +31,10 @@ type agentStats struct {
 
 var statsCmd = &cobra.Command{
 	Use:   "stats",
-	Short: "Show analytics per agent — chats, messages, tokens, tool calls",
-	Long: `Aggregate stats across all agents' chats.
+	Short: "Show analytics per agent — source sessions, messages, tokens, tool calls",
+	Long: `Aggregate stats across all agents' source sessions.
 
-Example:
+Examples:
   vibeporter stats
   vibeporter stats --agent gemini --json`,
 	SilenceUsage: true,
@@ -115,7 +115,7 @@ func collectStats(agents []string) ([]agentStats, error) {
 
 func printStatsHuman(rows []agentStats) {
 	if len(rows) == 0 {
-		fmt.Printf("%s No chats found for any agent.\n", colorize(colorDim, "○"))
+		fmt.Printf("%s No source sessions found for any agent.\n", colorize(colorDim, "○"))
 		return
 	}
 	// totals

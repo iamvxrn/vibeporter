@@ -20,7 +20,7 @@ var (
 
 var listCmd = &cobra.Command{
 	Use:          "list [agent]",
-	Short:        "List chats by title, project, and date",
+	Short:        "List source sessions by title, project, and date",
 	Args:         cobra.ExactArgs(1),
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -33,7 +33,7 @@ var listCmd = &cobra.Command{
 
 		chats, err := extractor.ListConversations()
 		if err != nil {
-			return fmt.Errorf("listing chats: %w", err)
+			return fmt.Errorf("listing source sessions: %w", err)
 		}
 
 		sort.SliceStable(chats, func(i, j int) bool {
@@ -99,12 +99,12 @@ func printListHuman(agent string, chats []adapters.ChatInfo, showPath bool) {
 	aicon := agentIcon(agent)
 	switch len(chats) {
 	case 0:
-		fmt.Printf("%s No chats found for %s.\n", colorize(colorDim, "○"), colorize(acolor+colorBold, agent))
+		fmt.Printf("%s No source sessions found for %s.\n", colorize(colorDim, "○"), colorize(acolor+colorBold, agent))
 		return
 	case 1:
-		fmt.Printf("%s %s 1 chat  %s\n\n", colorize(acolor, aicon), colorize(colorBold, "▸"), colorize(acolor+colorBold, agent))
+		fmt.Printf("%s %s 1 source session  %s\n\n", colorize(acolor, aicon), colorize(colorBold, "▸"), colorize(acolor+colorBold, agent))
 	default:
-		fmt.Printf("%s %s %d chats  %s\n\n", colorize(acolor, aicon), colorize(colorBold, "▸"), len(chats), colorize(acolor+colorBold, agent))
+		fmt.Printf("%s %s %d source sessions  %s\n\n", colorize(acolor, aicon), colorize(colorBold, "▸"), len(chats), colorize(acolor+colorBold, agent))
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -148,7 +148,7 @@ func printListHuman(agent string, chats []adapters.ChatInfo, showPath bool) {
 	}
 	_ = w.Flush()
 	if len(chats) > 0 {
-		fmt.Printf("\n%s %s\n", colorize(colorDim, "─"), colorize(colorDim, fmt.Sprintf("%d chat(s) — %s %s", len(chats), aicon, agent)))
+		fmt.Printf("\n%s %s\n", colorize(colorDim, "─"), colorize(colorDim, fmt.Sprintf("%d source session(s) — %s %s", len(chats), aicon, agent)))
 	}
 }
 

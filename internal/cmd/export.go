@@ -19,11 +19,12 @@ var (
 
 var exportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Export a chat to Markdown or HTML",
-	Long: `Extract a chat and render it as Markdown or HTML for sharing or docs.
+	Short: "Export a source session to Markdown or HTML",
+	Long: `Extract a source session and render it as Markdown or HTML for sharing or docs.
+This is not a handoff into another agent.
 
-Example:
-  vibeporter export --from claudecode --source <id> --format markdown --output chat.md
+Examples:
+  vibeporter export --from claudecode --source <id> --format markdown --output context.md
   vibeporter export --from gemini --source ~/.gemini/tmp/.../chats/session.jsonl --format html`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -199,7 +200,7 @@ func renderHTML(conv *models.Conversation) string {
 
 func init() {
 	exportCmd.Flags().StringVar(&exportFrom, "from", "", "Source agent")
-	exportCmd.Flags().StringVar(&exportSource, "source", "", "Chat id from list, or a file path")
+	exportCmd.Flags().StringVar(&exportSource, "source", "", "Source session id from list, or a file path")
 	exportCmd.Flags().StringVar(&exportFormat, "format", "markdown", "Output format: markdown or html")
 	exportCmd.Flags().StringVar(&exportOutput, "output", "", "Output file (default stdout, use - for stdout)")
 	_ = exportCmd.MarkFlagRequired("from")

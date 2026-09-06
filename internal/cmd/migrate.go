@@ -20,8 +20,14 @@ var (
 )
 
 var migrateCmd = &cobra.Command{
-	Use:          "migrate",
-	Short:        "Migrate a chat from one agent format to another",
+	Use:   "migrate",
+	Short: "Copy a source session into another agent format without compacting",
+	Long: `Raw copy of a source session into a new native session. Prefer handoff
+when you want a budgeted context packet. This command name is kept for compatibility.
+
+Examples:
+  vibeporter migrate --from claudecode --to opencode --source <id>
+  vibeporter migrate --from gemini --to cursor --source <id> --target /tmp/out.jsonl`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		extractor, ok := extractors[fromAgent]
@@ -60,7 +66,7 @@ var migrateCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("Migrating %d messages from %s to %s...\n", len(conv.Messages), fromAgent, toAgent)
+		fmt.Printf("Copying %d messages from %s to %s...\n", len(conv.Messages), fromAgent, toAgent)
 		written, err := injector.Inject(conv, out)
 		if err != nil {
 			return fmt.Errorf("injecting: %w", err)
@@ -96,11 +102,11 @@ func applyMigrateOverrides(conv *models.Conversation) {
 func init() {
 	migrateCmd.Flags().StringVar(&fromAgent, "from", "", "Source agent")
 	migrateCmd.Flags().StringVar(&toAgent, "to", "", "Target agent")
-	migrateCmd.Flags().StringVar(&sourcePath, "source", "", "Chat id from list, or a file path")
+	migrateCmd.Flags().StringVar(&sourcePath, "source", "", "Source session id from list, or a file path")
 	migrateCmd.Flags().StringVar(&targetPath, "target", "", "Optional output path (defaults to the target agent's native store)")
 	migrateCmd.Flags().StringVar(&migrateTitle, "title", "", "Override the conversation title on the target")
 	migrateCmd.Flags().StringVar(&migrateCwd, "cwd", "", "Override the workspace directory stored on the target session")
-	migrateCmd.Flags().IntVar(&excludeLast, "exclude-last", 0, "Exclude the last N messages before migration")
+	migrateCmd.Flags().IntVar(&excludeLast, "exclude-last", 0, "Exclude the last N messages before the copy")
 
 	_ = migrateCmd.MarkFlagRequired("from")
 	_ = migrateCmd.MarkFlagRequired("to")

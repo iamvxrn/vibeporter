@@ -79,7 +79,7 @@ func TestPrintStatsHuman(t *testing.T) {
 		t.Fatalf("bars %q", out)
 	}
 	empty := captureStdout(t, func() { printStatsHuman(nil) })
-	if !strings.Contains(empty, "No chats") {
+	if !strings.Contains(empty, "No source sessions") {
 		t.Fatalf("empty %q", empty)
 	}
 }

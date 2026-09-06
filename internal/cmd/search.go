@@ -33,10 +33,10 @@ type searchHit struct {
 
 var searchCmd = &cobra.Command{
 	Use:   "search <query>",
-	Short: "Full-text search across chats of all agents",
-	Long: `Search for a phrase across all chats of all agents (or a single --agent).
+	Short: "Full-text search across source sessions of all agents",
+	Long: `Search for a phrase across source sessions of all agents (or a single --agent).
 
-Example:
+Examples:
   vibeporter search "fix database bug"
   vibeporter search "auth" --agent gemini --limit 20
   vibeporter search "panic" --json`,

@@ -13,11 +13,13 @@ var serveAddr string
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the local-only web UI",
-	Long: `Start a local web server for browsing chats.
+	Long: `Start a local web server for browsing source sessions and creating context packets.
 
   vibeporter serve                         # http://127.0.0.1:8080
   vibeporter serve --addr 127.0.0.1:3000
-  vibeporter serve --addr 0.0.0.0:8080     # exposes chat data to the network`,
+  vibeporter serve --addr 0.0.0.0:8080     # exposes local session data to the network
+
+There is no cloud account. All data stays on this machine.`,
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		addr := strings.TrimSpace(serveAddr)
@@ -30,7 +32,7 @@ var serveCmd = &cobra.Command{
 			addr = "127.0.0.1:" + addr
 		}
 		if !strings.HasPrefix(addr, "127.0.0.1:") && !strings.HasPrefix(addr, "localhost:") {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARNING: serving chat data on %s. Anyone who can reach this address can access the local API.\n", addr)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARNING: serving local session data on %s. Anyone who can reach this address can access the local API.\n", addr)
 		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Starting local-only vibeporter web at http://%s\n", addr)
 		return web.Serve(addr)
