@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Shared engineering context
+
+- Product positioning: Vibeporter is a local **context layer**; `handoff` / adapters / `port-config` are integrations that deliver **context packets**.
+- Context packet schema (`internal/contextpacket`) written with each `handoff` under `~/.vibeporter/handoffs/`, including provenance and source sessions. Structured decisions/constraints/questions/artifacts are reserved, not inferred from chat text.
+- Docs: context model, for teams (planned), integrations, business notes (Dodo Payments not integrated).
+- Headline: local portable context (not a claim that teams already share a workspace).
+- Social and UI copy: no “migrate chats” headline; `migrate` remains a compatibility command name only.
+
 ## [0.5.0] — Context Handoff - 2026-09-02
 
 - `handoff` selects local chat context to a token budget and creates fresh native target sessions with `smart` or `recent` strategies.
@@ -30,7 +38,7 @@ The search + stats + hub release.
 - **Fidelity** — preserve tool calls in `opencode` even without `tool_result` output (fix `cursor → opencode` `1259 → 0` → `0 diff`), update `simulateOpencodeRoundTrip`, synthetic round-trip tests for 7 adapters (`internal/cmd/fidelity_test.go`)
 - **Docs** — `README` and `website/docs/cli.md` list `antigravity`/`windsurf`, `search`/`stats`/`serve` sections
 
-Fixes `opencode` tool-call loss that caused `что мы делали` to return garbage after `cursor → opencode` migration. Previous unreleased fix remains: cursor merges same-role chunks, opencode inject behavior now documented.
+Fixes `opencode` tool-call loss that caused `что мы делали` to return garbage after `cursor → opencode` handoff. Previous unreleased fix remains: cursor merges same-role chunks, opencode inject behavior now documented.
 
 ## [0.3.0] - 2026-08-28
 
@@ -44,7 +52,7 @@ CI, lint, and tests: gofmt, golangci-lint, govulncheck, and unit coverage for mo
 
 ## [0.2.0] - 2026-08-27
 
-Round-trip migrate among the agents we actually support, plus Kimi Code and DeepSeek Harness.
+Round-trip copy among the agents we actually support, plus Kimi Code and DeepSeek Harness.
 
 - Inject writes a **new** session for Claude Code, OpenCode, Gemini CLI, Kimi Code, and DSH (never updates an existing one)
 - `migrate --target` is optional; default is the target agent's native store
@@ -55,7 +63,7 @@ Round-trip migrate among the agents we actually support, plus Kimi Code and Deep
 
 ## [0.1.0] - 2026-08-25
 
-Initial release of Vibeporter — a CLI for migrating chat histories and project configs between AI coding agents.
+Initial release of Vibeporter — a local CLI and adapters for agent sessions and project configs.
 
 - Commands: `list`, `migrate`, `port-config`
 - Extract adapters: Claude Code (JSONL), OpenCode (SQLite), Gemini CLI (JSONL)
