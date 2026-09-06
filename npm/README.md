@@ -1,6 +1,6 @@
 # vibeporter
 
-Thin npm wrapper around the [Vibeporter](https://vibeporter.pages.dev) local context handoff CLI. On first run it downloads the matching GitHub Release binary and caches it.
+Thin npm wrapper around the [Vibeporter](https://vibeporter.pages.dev) CLI. Vibeporter preserves engineering context locally and makes it portable across AI agents, developers, teams, and projects. On first run this package downloads the matching GitHub Release binary and caches it.
 
 The primary install is still the shell script:
 

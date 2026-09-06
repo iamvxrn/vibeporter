@@ -1,7 +1,7 @@
 {
   "name": "vibeporter",
   "version": "0.5.0",
-  "description": "Thin npm wrapper for the Vibeporter CLI (downloads the GitHub Release binary).",
+  "description": "Thin npm wrapper for the Vibeporter CLI — local engineering context across AI agents and projects.",
   "license": "MIT",
   "bin": {
     "vibeporter": "bin.js"
