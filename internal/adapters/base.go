@@ -26,7 +26,7 @@ type Injector interface {
 	Inject(conversation *models.Conversation, targetPath string) (string, error)
 }
 
-// TargetDefaults can pick a native on-disk (or store) location when migrate
+// TargetDefaults can pick a native on-disk (or store) location when inject
 // is invoked without --target.
 type TargetDefaults interface {
 	DefaultTarget(conversation *models.Conversation) (string, error)

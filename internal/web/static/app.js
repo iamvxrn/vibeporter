@@ -23,7 +23,7 @@ async function loadStats(){
     bar.replaceChildren(...rows.map(r=>{
       const span = el('span');
       const agent = el('b', null, r.agent);
-      span.append(agent, document.createTextNode(` ${r.chats} chats · ${r.messages} msgs · ~${r.tokens_est} tokens`));
+      span.append(agent, document.createTextNode(` ${r.chats} sources · ${r.messages} msgs · ~${r.tokens_est} tokens`));
       return span;
     }));
   }catch{}
@@ -71,7 +71,7 @@ function handoffBody(){
 function renderHandoffResult(result, created){
   const box = document.getElementById('handoffPreview');
   box.replaceChildren();
-  box.appendChild(el('b', null, created ? 'Handoff created' : 'Dry run'));
+  box.appendChild(el('b', null, created ? 'Context packet delivered' : 'Dry run'));
   box.appendChild(document.createElement('br'));
   box.appendChild(document.createTextNode(`${result.source_agent} → ${result.target_agent} · tokens~ ${result.original_tokens_estimate} → ${result.transferred_tokens_estimate} · budget ${result.budget_tokens}`));
   if(created && result.target_path){
@@ -85,17 +85,17 @@ function renderHandoffResult(result, created){
 async function runHandoff(create){
   if(!selected) return;
   const box = document.getElementById('handoffPreview');
-  box.textContent = create ? 'creating handoff…' : 'previewing…';
+  box.textContent = create ? 'delivering context packet…' : 'previewing…';
   try{
     const r = await fetch(create?'/api/handoff':'/api/handoff/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(handoffBody())});
     const data = await r.json(); if(!r.ok) throw new Error(data.error || r.statusText);
     renderHandoffResult(data, create);
-    if(create){ document.getElementById('handoffStatus').textContent=`Created ${data.source_agent} → ${data.target_agent}: ${data.target_path}`; await loadChats(); }
+    if(create){ document.getElementById('handoffStatus').textContent=`Packet ${data.source_agent} → ${data.target_agent}: ${data.target_path}`; await loadChats(); }
   }catch(e){ box.textContent = `handoff failed: ${e.message}`; }
 }
 
 function openHandoff(){
-  if(!selected){ document.getElementById('handoffStatus').textContent='Select a chat first.'; return; }
+  if(!selected){ document.getElementById('handoffStatus').textContent='Select a source first.'; return; }
   document.getElementById('handoffSource').textContent=`${selected.Agent} · ${selected.Title || 'Untitled'} · ${selected.ID}`;
   document.getElementById('handoffPreview').textContent='Choose a budget, then use Dry run to preview the selected context.';
   document.getElementById('handoffModal').classList.remove('hidden');
@@ -193,7 +193,7 @@ async function doSearch(){
 }
 
 async function doDiff(){
-  if(!selected) return alert('select a chat first');
+  if(!selected) return alert('select a source first');
   const from = document.getElementById('fromSel').value;
   const to = document.getElementById('toSel').value;
   const panel = document.getElementById('diffPanel');
@@ -210,16 +210,16 @@ async function doDiff(){
     const parts = r.parts;
     panel.appendChild(el('span', null, parts && parts.equal ? 'Parts: identical' : `Parts: ${parts ? parts.mismatches.length : 'not compared'} difference(s)`));
     panel.appendChild(document.createElement('br'));
-    panel.appendChild(el('small', null, 'Tip: check preview before migrate'));
+    panel.appendChild(el('small', null, 'Tip: preview the source before a raw copy'));
   }catch(e){ panel.textContent='diff failed: '+e.message; }
 }
 
 async function doMigrate(){
-  if(!selected) return alert('select a chat');
+  if(!selected) return alert('select a source');
   const from = document.getElementById('fromSel').value;
   const to = document.getElementById('toSel').value;
   const status = document.getElementById('migrateStatus');
-  status.textContent = 'migrating…';
+  status.textContent = 'copying…';
   try{
     const r = await fetch('/api/migrate', {
       method: 'POST',
@@ -228,12 +228,12 @@ async function doMigrate(){
     });
     const j = await r.json();
     if(!r.ok) throw new Error(j.error || r.statusText);
-    status.textContent = `Migrated ${from} → ${to}: ${j.target} — refresh list`;
+    status.textContent = `Copied ${from} → ${to}: ${j.target} — refresh list`;
     // refresh chats for target agent
     const fresh = await fetchJSON(`/api/chats?agent=${encodeURIComponent(to)}`);
     // optionally select new chat
   }catch(e){
-    status.textContent = 'migrate failed: '+e.message;
+    status.textContent = 'copy failed: '+e.message;
   }
 }
 
