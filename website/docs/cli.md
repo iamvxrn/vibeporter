@@ -1,6 +1,6 @@
 # CLI Reference
 
-Here are the commands you can use with `vibeporter`.
+Commands for local engineering context. Task handoff and adapters are [integrations](/integrations).
 
 ## `list`
 
@@ -14,11 +14,11 @@ vibeporter list <agent> --paths
 
 Prints a table of **title**, **project**, **updated**, and **id** (newest first). Titles come from the agent's own name when it has one (Claude `ai-title`, OpenCode `session.title`), otherwise from the first user message.
 
-`--json` is for scripts (includes the on-disk path). `--paths` adds that column to the table. `migrate` and `handoff` accept the id from this list.
+`--json` is for scripts (includes the on-disk path). `--paths` adds that column to the table. `handoff` accepts the id from this list.
 
 ## `handoff`
 
-Create a fresh native target session from locally selected context. It never overwrites the source chat and uses no cloud service or LLM.
+Create a context packet and deliver it as a fresh native target session. It never overwrites the source session and uses no cloud service or LLM.
 
 ```bash
 vibeporter handoff --from claudecode --source abc123 --to opencode --compact 200k
@@ -29,14 +29,14 @@ vibeporter handoff --from cursor --source /path/to/chat --to gemini --compact 10
 
 - `--strategy smart` (default) retains the system prompt, early user intent when possible, and useful recent context while dropping heavy noise.
 - `--strategy recent` keeps the newest valid context and preserves message ordering.
-- `--dry-run` reports the projected handoff without writing a target session.
-- `--json` writes the structured handoff report without human output.
+- `--dry-run` reports the projected packet without writing a target session.
+- `--json` writes the structured report (includes `packet` when present) without human output.
 
-Each created handoff has a provenance header and a metadata-only local manifest under `~/.vibeporter/handoffs/`.
+Each created handoff writes packet JSON under `~/.vibeporter/handoffs/` and a provenance header into the target session. See [Context model](/context).
 
 ## `migrate`
 
-Extract a chat from the source agent and inject it into the target agent's format.
+Raw copy of a source session into the target agent's format (no compacting). Prefer `handoff` for a budgeted context packet. The command name is kept for compatibility.
 
 ```bash
 vibeporter migrate --from <agent> --to <agent> --source <id>
@@ -46,33 +46,33 @@ vibeporter migrate --from <agent> --to <agent> --source <id> --target /tmp/out.j
 **Flags:**
 - `--from` — Source agent name
 - `--to` — Target agent name
-- `--source` — Chat id from `list`, or a file path
+- `--source` — Session id from `list`, or a file path
 - `--target` — Optional. When omitted, writes into the target agent's native store.
 
 ## `diff`
 
-Compare the original chat with what the target agent would store after migration -- before running a real one.
+Compare the original source session with what the target agent would store after a raw copy — before writing one.
 
 ```bash
 vibeporter diff --from claudecode --to gemini --source <id>
 vibeporter diff --from claudecode --to gemini --source <id> --json
 ```
 
-It extracts the source, does a temp migration to the target format, and reports counts and dropped parts. No real data is written to the target agent's store -- this is `migrate`'s dry run.
+It extracts the source, does a temp round-trip to the target format, and reports counts and dropped parts. No real data is written to the target agent's store.
 
-- `--from` / `--to` / `--source` — same meaning as `migrate`.
+- `--from` / `--to` / `--source` — same meaning as `handoff`.
 - `--json` — machine-readable report instead of the human summary.
 
 ## `export`
 
-Extract a chat and render it as Markdown or HTML, for sharing or docs -- not a handoff to another agent.
+Extract a source session and render it as Markdown or HTML, for sharing or docs — not a handoff to another agent.
 
 ```bash
-vibeporter export --from claudecode --source <id> --format markdown --output chat.md
+vibeporter export --from claudecode --source <id> --format markdown --output context.md
 vibeporter export --from gemini --source ~/.gemini/tmp/.../chats/session.jsonl --format html
 ```
 
-- `--from` / `--source` — same meaning as `migrate`.
+- `--from` / `--source` — session id from `list`, or a file path.
 - `--format` — `markdown` or `html`. Defaults to `markdown`.
 - `--output` — output file. Defaults to stdout; pass `-` for stdout explicitly.
 
@@ -82,13 +82,13 @@ vibeporter export --from gemini --source ~/.gemini/tmp/.../chats/session.jsonl -
 vibeporter serve
 ```
 
-Starts the local-only web app. Select a chat, choose **Handoff**, set a compact budget and strategy, run a dry preview, then create a native target session. All chat data stays on your device.
+Starts the local-only web app. Select a **source**, create a **context packet** via Handoff, set a compact budget and strategy, dry-run, then deliver a native target session. All data stays on your device. There is no account.
 
 It binds to loopback, but loopback is reachable from any page open in your browser, not just this one -- so every API route refuses a request that doesn't look like it came from the app itself (checked by `Sec-Fetch-Site`, `Origin`, and requiring `Content-Type: application/json` on writes, which a cross-site request cannot set without a preflight this server never approves).
 
 ## `search`
 
-Full-text search across all chats of all agents.
+Full-text search across source sessions of all agents.
 
 ```bash
 vibeporter search "fix database bug"
@@ -107,7 +107,7 @@ vibeporter stats
 vibeporter stats --agent gemini --json | jq
 ```
 
-Shows chats, messages, text/thinking/tool counts, total chars and estimated tokens (`chars/4`), plus a bar graph of chat distribution. Sorted by agent.
+Shows source-session counts, messages, text/thinking/tool counts, total chars and estimated tokens (`chars/4`), plus a bar graph of distribution. JSON field `chats` is unchanged for compatibility.
 
 ## `port-config`
 
@@ -117,6 +117,6 @@ Translate project configuration files between agent conventions.
 vibeporter port-config --from <agent> --to <agent> --dir <path>
 ```
 
-`cursor` is a `list` / `migrate` agent (agent transcripts). Config-file mapping still works independently.
+`cursor` is a `list` / `handoff` agent (agent transcripts). Config-file mapping still works independently.
 
 **Supported mappings:** any pair among `claudecode`, `gemini`, `cursor`, `opencode`, and `kimicode`/`kimi`. Instruction files and ignore files are copied to the target names (see [Config Porting](/config-porting)). Existing target files are never overwritten.

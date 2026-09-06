@@ -27,7 +27,7 @@ Use `gemini` wherever an agent name is expected:
 
 ```bash
 vibeporter list gemini
-vibeporter migrate --from claudecode --to gemini --source <path> --target <path>
+vibeporter handoff --from claudecode --to gemini --source <id> --compact 100k
 ```
 
 `vibeporter list gemini` scans `~/.gemini/tmp/*/chats/` and shows the first user message as the title.

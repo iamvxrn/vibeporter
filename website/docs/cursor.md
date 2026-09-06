@@ -18,8 +18,8 @@ Override the projects root with `CURSOR_PROJECTS_DIR`. Lines look like `{ "role"
 
 ```bash
 vibeporter list cursor
-vibeporter migrate --from gemini --to cursor --source <id>
-vibeporter migrate --from cursor --to gemini --source <id>
+vibeporter handoff --from gemini --to cursor --source <id> --compact 100k
+vibeporter handoff --from cursor --to gemini --source <id> --compact 100k
 ```
 
 ## Supported Operations

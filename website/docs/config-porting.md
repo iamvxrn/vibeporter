@@ -1,8 +1,6 @@
 # Config Porting
 
-Vibeporter can migrate project-level configuration files between AI coding agents. These are the files that define agent behavior, ignore patterns, and project instructions.
-
-## How it works
+Config porting is an **integration**: it copies project instruction files so another agent can load the same project context. It is not a chat converter.
 
 Run `port-config` in your project's root directory:
 
@@ -27,4 +25,4 @@ Vibeporter will:
 
 Any of these agents can be `--from` or `--to`. Matching files are copied (instruction file to instruction file, ignore file to ignore file). Agents without an ignore file skip that copy. Existing target files are never overwritten.
 
-`cursor` is included here as a filename mapping. Chat extract/inject is separate (`vibeporter list cursor`, `migrate --to cursor`).
+`cursor` is included here as a filename mapping. Session extract/inject is a separate adapter (`vibeporter list cursor`, `handoff --to cursor`).
