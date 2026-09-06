@@ -15,5 +15,5 @@
     <path d="M55 42 L63 50 L55 58" stroke="#8b5cf6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
   <text x="468" y="318" font-family="Noto Sans, sans-serif" font-size="80" font-weight="700" fill="#ece9f2">vibeporter</text>
-  <text x="468" y="384" font-family="Noto Sans, sans-serif" font-size="32" font-weight="400" fill="#aea9b8">Migrate chats between agents</text>
+  <text x="468" y="384" font-family="Noto Sans, sans-serif" font-size="32" font-weight="400" fill="#aea9b8">Local, portable engineering context</text>
 </svg>
