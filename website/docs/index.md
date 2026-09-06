@@ -1,6 +1,8 @@
-# Vibeporter: local context handoff
+# Vibeporter
 
-vibeporter is a single Go CLI for handing off long AI conversations into fresh native sessions. It selects useful local context to a budget, retains task intent and recent progress, and writes to another agent without cloud services or external accounts.
+Vibeporter preserves engineering context locally and makes it portable across AI agents, developers, teams, and projects.
+
+It is a local CLI: no cloud account, no telemetry. A **context packet** is the unit of transfer. Task handoff and chat adapters are integrations that deliver that packet into another coding agent.
 
 <div style="display: flex; gap: 12px; margin-top: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
   <a href="/quickstart" style="background-color: var(--vp-button-brand-bg); color: var(--vp-button-brand-text); padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background-color 0.2s;">Quickstart</a>
@@ -13,31 +15,43 @@ vibeporter is a single Go CLI for handing off long AI conversations into fresh n
 </div>
 
 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2rem;">
-  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Gemini CLI</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Portable context</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Context packets</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Local only</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Claude Code</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">OpenCode</span>
-  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Kimi Code</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Gemini CLI</span>
   <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Cursor</span>
-  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Pure Go</span>
-  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">Zero Dependencies</span>
+  <span style="background-color: #202127; color: #a1a1aa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">No telemetry</span>
 </div>
 
-[Other install options →](/install)
+[Install options →](/install) · [Scenarios →](/scenarios) · [Context model →](/context)
 
 ---
 
-## Try it
+## Why this exists
 
-After you install Vibeporter, everything is a one-liner.
+Agent sessions hold the real working memory of a task: what was decided, what is true right now, what must not change, what is still unknown. That memory dies when the window closes, when you switch tools, or when a teammate starts a new clone of the repo.
+
+Vibeporter keeps that layer local and portable. You select useful context, record provenance, and deliver a packet — instead of pasting a transcript and hoping.
+
+## Context packet
+
+The packet is the product unit. Source sessions are inputs. Native agent sessions are one delivery channel. The three team-facing flows are in [Scenarios](/scenarios).
 
 ```bash
-# List all your Claude Code conversations
 vibeporter list claudecode
 
-# Hand off a compact context to OpenCode
 vibeporter handoff --from claudecode --to opencode \
-  --source <chat-id-from-list> --compact 200k
-
-# Port your project configs (CLAUDE.md → GEMINI.md)
-vibeporter port-config --from claudecode --to gemini --dir .
+  --source <session-id-from-list> --compact 200k
 ```
+
+JSON for each created packet is written under `~/.vibeporter/handoffs/`.
+
+## Local, on purpose
+
+There is no Vibeporter cloud and no account. If you run `vibeporter serve`, it binds to loopback on your machine. Team-wide shared context is [planned](/teams), not shipping in this release.
+
+## Integrations
+
+Need a raw copy of a session, a Markdown export, or `CLAUDE.md` → `GEMINI.md`? Those are [integrations](/integrations), including task handoff.

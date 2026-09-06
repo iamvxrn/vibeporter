@@ -1,10 +1,8 @@
 # Quickstart
 
-Hand off useful context to another agent in three steps.
+Build a context packet from a local source session and deliver it to another agent.
 
-## 1. Discover your chats
-
-See what's available for a given agent:
+## 1. Discover source sessions
 
 ```bash
 vibeporter list claudecode
@@ -17,9 +15,9 @@ vibeporter list cursor
 
 Each row is a title, project directory, last update, and id (newest first). Use `--json` if you need the file path.
 
-## 2. Create a context handoff
+## 2. Create a context packet (task handoff)
 
-Pick a source chat by its id (from `list`). Choose a context budget; omit `--target` to write into the destination agent's own store:
+Pick a source session by its id (from `list`). `--compact` is the context budget. Omit `--target` to write into the destination agent's own store:
 
 ```bash
 vibeporter handoff \
@@ -34,15 +32,26 @@ vibeporter handoff --from gemini --to cursor --source <id> --compact 100k --stra
 Behind the scenes, Vibeporter:
 1. Parses the source agent's storage format (JSONL, SQLite).
 2. Selects local context to the requested token budget using `smart` or `recent`.
-3. Adds provenance and serializes a new session into the target agent's format.
+3. Records provenance on a **context packet** and serializes a new session into the target agent's format.
+4. Writes packet JSON under `~/.vibeporter/handoffs/` (not on `--dry-run`).
 
-## 3. Port your project configs
+This is local. The other person only sees the result if they use the same machine (or you copy the target session yourself). There is no Vibeporter account.
 
-Bring your workspace rules and ignore files along too:
+Walk through the three team-facing flows in [Scenarios](/scenarios).
+
+## 3. Optional: local hub
+
+```bash
+vibeporter serve
+```
+
+Opens a loopback UI labeled Context / Sources / Handoffs. Same APIs as the CLI; same-origin protections stay on.
+
+## 4. Project instruction files
 
 ```bash
 cd /path/to/your/project
 vibeporter port-config --from claudecode --to gemini --dir .
 ```
 
-This copies `CLAUDE.md` → `GEMINI.md` and `.claudeignore` → `.geminiignore`, and it never overwrites a file that already exists. See [Config Porting](/config-porting) for the full mapping.
+This copies `CLAUDE.md` → `GEMINI.md` and `.claudeignore` → `.geminiignore`, and never overwrites a file that already exists. See [Config porting](/config-porting) and [Integrations](/integrations).

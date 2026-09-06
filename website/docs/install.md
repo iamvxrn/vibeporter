@@ -1,6 +1,6 @@
 # Installation
 
-Install Vibeporter using the shell script:
+Install the local Vibeporter CLI (no account):
 
 ```bash
 curl -fsSL https://vibeporter.pages.dev/install.sh | sh

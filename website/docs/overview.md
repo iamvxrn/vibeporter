@@ -1,30 +1,35 @@
 # Overview
 
-Vibeporter is a local CLI for handing off AI chat context into a fresh native session in another coding agent. Select a useful context budget for a long chat, preserve task intent and recent progress, and avoid vendor lock-in.
+Vibeporter preserves engineering context locally and makes it portable across AI agents, developers, teams, and projects.
+
+It runs as a local CLI and a local web UI. The unit of transfer is a **context packet**. Adapters, `handoff`, `export`, and `port-config` are how packets and project files move — not the definition of the product.
 
 ## Why Vibeporter?
 
-- **No lock-in:** Your conversations belong to you. Move them between agents freely.
-- **Local only:** Chat data remains on your device; Vibeporter has no cloud service, account, telemetry, or daemon.
-- **Single binary:** Compiled Go with zero runtime dependencies. Pure Go SQLite (no CGO), so it cross-compiles anywhere.
-- **One common format:** Every agent is described by a small adapter that reads into — and writes out of — a shared intermediate representation. Adding a new agent is just one adapter, not N×N converters.
-- **Agent-friendly:** Designed to be invoked by AI agents themselves, not just humans.
+- **Context, not lock-in:** Working memory should survive a tool switch. Source sessions stay yours; packets carry a budgeted slice with provenance.
+- **Local only:** No cloud service, account, telemetry, or daemon. Data stays on the device that runs the binary.
+- **Single binary:** Compiled Go with no runtime dependencies. Pure Go SQLite (no CGO).
+- **One common format:** Each agent has an extractor and an injector around a shared intermediate representation (IR). Adding an agent is one adapter, not N×N converters.
+- **Agent-friendly:** Designed to be invoked by coding agents as well as humans.
 
 ## How it works
 
-Vibeporter never converts one agent's format directly into another's. Instead, each agent has an **extractor** (reads its native format) and an **injector** (writes it). Both sides speak a common intermediate representation (IR), so any source can reach any target through one hop.
+Vibeporter never converts one agent's format directly into another's. Extractors read native stores into the IR. Injectors write the IR back. `handoff` sits on that path: it selects context to a token budget, wraps it as a context packet, and writes a **new** target session.
 
 ```mermaid
 graph LR
-    A[Claude Code] -->|Extractor| IR((Common Format))
-    B[OpenCode] -->|Extractor| IR
-    C[Gemini CLI] -->|Extractor| IR
-    K[Kimi Code] -->|Extractor| IR
-    DSH[DeepSeek Harness] -->|Extractor| IR
-    Cur[Cursor] -->|Extractor| IR
-    IR -->|Injector| D[Claude / OpenCode / Gemini / Kimi / DSH / Cursor]
+    A[Source session] -->|Extractor| IR((Context IR))
+    IR -->|Select + provenance| P[Context packet]
+    P -->|Injector| B[Native session]
+    P -->|Local JSON| M[~/.vibeporter/handoffs]
 ```
 
-The IR is a list of messages. Each message has a role (`user`, `assistant`, `system`) and **parts**: text, thinking, tool_call, tool_result. `Content` is a plain-text fallback (titles and list previews skip thinking). System prompts round-trip when the native format has a slot for them. Images, attachments, and subagent transcripts are not mapped.
+The IR is a list of messages. Each message has a role (`user`, `assistant`, `system`) and **parts**: text, thinking, tool_call, tool_result. `Content` is a plain-text fallback. Images, attachments, and subagent transcripts are not mapped.
 
-Extract and inject both exist for Claude Code, OpenCode, Gemini CLI, Kimi Code, DeepSeek Harness, and Cursor. `handoff` uses this same pipeline after local context selection, and inject always creates a **new** session without overwriting the source. `migrate` remains available for raw, un-compacted transfers.
+Extract and inject both exist for Claude Code, OpenCode, Gemini CLI, Kimi Code, DeepSeek Harness, and Cursor. Un-compacted session copy still uses the `migrate` command name for compatibility. See [Context model](/context) and [Integrations](/integrations).
+
+## What this is not
+
+- Not a hosted team workspace (that is [planned](/teams)).
+- Not a generic vector database or a Notion replacement.
+- Not a claim of multi-user access control: the current product is single-machine.
