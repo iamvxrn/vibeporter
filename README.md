@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **This project is archived.** It is no longer maintained and will not
+> receive updates. The code stays available and works as documented.
+
 <p align="center">
   <img src="website/docs/public/social.png" alt="vibeporter — local, portable engineering context across agents, people, and projects" width="720">
 </p>
